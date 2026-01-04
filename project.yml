@@ -1,0 +1,39 @@
+name: VhisperNative
+options:
+  bundleIdPrefix: com.vimo-ai
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+  groupSortPosition: top
+
+settings:
+  SWIFT_VERSION: "5.9"
+  MACOSX_DEPLOYMENT_TARGET: "14.0"
+  DEVELOPMENT_TEAM: ""
+  CODE_SIGN_STYLE: Automatic
+  ENABLE_HARDENED_RUNTIME: YES
+  SWIFT_STRICT_CONCURRENCY: complete
+
+targets:
+  VhisperNative:
+    type: application
+    platform: macOS
+    sources:
+      - path: VhisperNative
+        excludes:
+          - "**/*.entitlements"
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.vimo-ai.VhisperNative
+      INFOPLIST_FILE: VhisperNative/Resources/Info.plist
+      CODE_SIGN_ENTITLEMENTS: VhisperNative/Resources/VhisperNative.entitlements
+      PRODUCT_NAME: Vhisper
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      COMBINE_HIDPI_IMAGES: YES
+      LD_RUNPATH_SEARCH_PATHS:
+        - "$(inherited)"
+        - "@executable_path/../Frameworks"
+    entitlements:
+      path: VhisperNative/Resources/VhisperNative.entitlements
+    info:
+      path: VhisperNative/Resources/Info.plist
