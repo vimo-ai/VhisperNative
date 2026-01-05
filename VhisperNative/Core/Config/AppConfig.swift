@@ -11,6 +11,7 @@ import Carbon.HIToolbox
 // MARK: - Main Configuration
 
 struct AppConfig: Codable {
+    var general: GeneralConfig
     var hotkey: HotkeyConfig
     var asr: ASRConfig
     var llm: LLMConfig
@@ -19,12 +20,68 @@ struct AppConfig: Codable {
 
     static var `default`: AppConfig {
         AppConfig(
+            general: .default,
             hotkey: .default,
             asr: .default,
             llm: .default,
             output: .default,
             vocabulary: .default
         )
+    }
+
+    // Custom decoder to handle missing general field in old configs
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        general = try container.decodeIfPresent(GeneralConfig.self, forKey: .general) ?? .default
+        hotkey = try container.decode(HotkeyConfig.self, forKey: .hotkey)
+        asr = try container.decode(ASRConfig.self, forKey: .asr)
+        llm = try container.decode(LLMConfig.self, forKey: .llm)
+        output = try container.decode(OutputConfig.self, forKey: .output)
+        vocabulary = try container.decodeIfPresent(VocabularyConfig.self, forKey: .vocabulary) ?? .default
+    }
+
+    init(general: GeneralConfig, hotkey: HotkeyConfig, asr: ASRConfig, llm: LLMConfig, output: OutputConfig, vocabulary: VocabularyConfig) {
+        self.general = general
+        self.hotkey = hotkey
+        self.asr = asr
+        self.llm = llm
+        self.output = output
+        self.vocabulary = vocabulary
+    }
+}
+
+// MARK: - General Configuration
+
+enum AppLanguage: String, Codable, CaseIterable, Identifiable {
+    case system = "system"
+    case english = "en"
+    case chinese = "zh-Hans"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .system: return NSLocalizedString("settings.language.system", comment: "Follow System")
+        case .english: return "English"
+        case .chinese: return "中文"
+        }
+    }
+
+    /// Get the actual locale identifier for this language
+    var localeIdentifier: String? {
+        switch self {
+        case .system: return nil
+        case .english: return "en"
+        case .chinese: return "zh-Hans"
+        }
+    }
+}
+
+struct GeneralConfig: Codable {
+    var language: AppLanguage
+
+    static var `default`: GeneralConfig {
+        GeneralConfig(language: .system)
     }
 }
 
@@ -127,14 +184,15 @@ struct VADConfig: Codable {
         )
     }
 
-    /// Predefined presets
-    static let presets: [(name: String, config: VADConfig)] = [
-        ("快速响应", VADConfig(silenceDurationMs: 200, threshold: 0.5)),
-        ("默认", VADConfig(silenceDurationMs: 300, threshold: 0.5)),
-        ("稳定", VADConfig(silenceDurationMs: 500, threshold: 0.5)),
-        ("长句", VADConfig(silenceDurationMs: 800, threshold: 0.4))
+    /// Predefined presets with localization keys
+    static let presets: [(name: String, localizationKey: String, config: VADConfig)] = [
+        ("Fast", "settings.vad.preset.fast", VADConfig(silenceDurationMs: 200, threshold: 0.5)),
+        ("Default", "settings.vad.preset.default", VADConfig(silenceDurationMs: 300, threshold: 0.5)),
+        ("Stable", "settings.vad.preset.stable", VADConfig(silenceDurationMs: 500, threshold: 0.5)),
+        ("Long", "settings.vad.preset.long", VADConfig(silenceDurationMs: 800, threshold: 0.4))
     ]
 }
+
 
 struct QwenASRConfig: Codable {
     var apiKey: String = ""

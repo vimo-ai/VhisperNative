@@ -11,16 +11,30 @@ import Carbon.HIToolbox
 // MARK: - Settings Tab
 
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case asr = "语音识别"
-    case llm = "文本优化"
-    case vocabulary = "词库"
-    case hotkey = "快捷键"
-    case permissions = "权限"
+    case general = "general"
+    case asr = "asr"
+    case llm = "llm"
+    case vocabulary = "vocabulary"
+    case hotkey = "hotkey"
+    case permissions = "permissions"
 
     var id: String { rawValue }
 
+    /// Localization key for display name
+    var localizationKey: String {
+        switch self {
+        case .general: return "settings.tab.general"
+        case .asr: return "settings.tab.asr"
+        case .llm: return "settings.tab.llm"
+        case .vocabulary: return "settings.tab.vocabulary"
+        case .hotkey: return "settings.tab.hotkey"
+        case .permissions: return "settings.tab.permissions"
+        }
+    }
+
     var icon: String {
         switch self {
+        case .general: return "gearshape"
         case .asr: return "mic.fill"
         case .llm: return "sparkles"
         case .vocabulary: return "book.fill"
@@ -36,8 +50,9 @@ struct SettingsView: View {
     @EnvironmentObject var manager: VhisperManager
     @EnvironmentObject var hotkeyManager: HotkeyManager
     @StateObject private var permissionManager = PermissionManager.shared
+    @ObservedObject private var localizationManager = LocalizationManager.shared
 
-    @State private var selectedTab: SettingsTab = .asr
+    @State private var selectedTab: SettingsTab = .general
     @State private var showingSaveConfirmation = false
 
     var body: some View {
@@ -55,7 +70,8 @@ struct SettingsView: View {
                 // Content area
                 ScrollView {
                     contentView
-                        .padding(24)
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 20)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -66,7 +82,7 @@ struct SettingsView: View {
             }
             .background(Color(NSColor.controlBackgroundColor))
         }
-        .frame(width: 600, height: 480)
+        .frame(width: 700, height: 540)
         .onAppear {
             permissionManager.checkAllPermissions()
         }
@@ -82,52 +98,59 @@ struct SettingsView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             // App title
-            Text("Vhisper")
-                .font(.system(size: 16, weight: .semibold))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-
-            Divider()
-                .padding(.bottom, 8)
+            HStack(spacing: 8) {
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 28, height: 28)
+                Text("Vhisper")
+                    .font(.system(size: 15, weight: .semibold))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
 
             // Navigation buttons
-            VStack(spacing: 4) {
-                ForEach(SettingsTab.allCases) { tab in
-                    sidebarButton(for: tab)
+            ScrollView {
+                VStack(spacing: 2) {
+                    ForEach(SettingsTab.allCases) { tab in
+                        sidebarButton(for: tab)
+                    }
                 }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal, 8)
 
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .frame(width: 160)
+        .frame(width: 180)
         .background(Color(NSColor.windowBackgroundColor))
     }
 
     private func sidebarButton(for tab: SettingsTab) -> some View {
         Button(action: { selectedTab = tab }) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Image(systemName: tab.icon)
-                    .font(.system(size: 14))
-                    .frame(width: 20)
-
-                Text(tab.rawValue)
                     .font(.system(size: 13))
+                    .foregroundColor(selectedTab == tab ? .white : .secondary)
+                    .frame(width: 18)
+
+                Text(tab.localizationKey.localized())
+                    .font(.system(size: 13))
+                    .lineLimit(1)
 
                 Spacer()
 
                 // Warning dot for permissions
                 if tab == .permissions && permissionManager.hasPermissionIssues {
                     Circle()
-                        .fill(Color.red)
-                        .frame(width: 8, height: 8)
+                        .fill(selectedTab == tab ? Color.white : Color.red)
+                        .frame(width: 7, height: 7)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
             .background(selectedTab == tab ? Color.accentColor : Color.clear)
             .foregroundColor(selectedTab == tab ? .white : .primary)
-            .cornerRadius(8)
+            .cornerRadius(6)
         }
         .buttonStyle(.plain)
     }
@@ -140,10 +163,10 @@ struct SettingsView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundColor(.orange)
 
-                Text("部分系统权限未授权，可能影响应用功能。")
+                Text("settings.permission_warning".localized())
                     .font(.system(size: 13))
 
-                Text("点击查看")
+                Text("settings.permission_warning.button".localized())
                     .font(.system(size: 13, weight: .medium))
                     .underline()
 
@@ -162,6 +185,9 @@ struct SettingsView: View {
     @ViewBuilder
     private var contentView: some View {
         switch selectedTab {
+        case .general:
+            GeneralSettingsContent()
+                .environmentObject(manager)
         case .asr:
             ASRSettingsContent()
                 .environmentObject(manager)
@@ -184,14 +210,14 @@ struct SettingsView: View {
     private var footer: some View {
         HStack {
             if showingSaveConfirmation {
-                Label("保存成功", systemImage: "checkmark.circle.fill")
+                Label("settings.save.success".localized(), systemImage: "checkmark.circle.fill")
                     .font(.system(size: 13))
                     .foregroundColor(.green)
             }
 
             Spacer()
 
-            Button("保存设置") {
+            Button("settings.save".localized()) {
                 manager.saveConfiguration()
                 showingSaveConfirmation = true
 
@@ -215,55 +241,56 @@ struct ASRSettingsContent: View {
     @State private var testResult: (success: Bool, message: String)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("语音识别设置")
+        VStack(alignment: .leading, spacing: 24) {
+            // Header
+            Text("settings.asr.title".localized())
                 .font(.system(size: 18, weight: .semibold))
 
-            // Provider picker
-            VStack(alignment: .leading, spacing: 8) {
-                Text("ASR 服务商")
-                    .font(.system(size: 13, weight: .medium))
-
-                Picker("", selection: $manager.config.asr.provider) {
-                    ForEach(ASRProvider.allCases) { provider in
-                        Text(provider.displayName).tag(provider)
+            // Provider Section
+            SettingsSection {
+                SettingsRow(label: "settings.asr.provider".localized()) {
+                    Picker("", selection: $manager.config.asr.provider) {
+                        ForEach(ASRProvider.allCases) { provider in
+                            Text(provider.displayName).tag(provider)
+                        }
                     }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(width: 240)
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(maxWidth: 300)
-            }
 
-            // Provider-specific settings
-            providerSettings
+                // Provider-specific settings
+                providerSettings
+            }
 
             // VAD settings (only show for streaming providers)
             if manager.config.asr.provider == .qwen || manager.config.asr.provider == .dashscope {
                 vadSettingsSection
             }
 
-            // Test button
-            HStack(spacing: 12) {
-                Button(action: testConnection) {
-                    HStack(spacing: 6) {
-                        if isTesting {
-                            ProgressView()
-                                .scaleEffect(0.7)
+            // Test connection
+            SettingsSection {
+                HStack(spacing: 12) {
+                    Button(action: testConnection) {
+                        HStack(spacing: 6) {
+                            if isTesting {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                            }
+                            Text(isTesting ? "settings.asr.testing".localized() : "settings.asr.test".localized())
                         }
-                        Text(isTesting ? "测试中..." : "测试")
+                        .frame(minWidth: 80)
                     }
-                }
-                .buttonStyle(.bordered)
-                .disabled(isTesting || !isConfigValid)
+                    .buttonStyle(.bordered)
+                    .disabled(isTesting || !isConfigValid)
 
-                if let result = testResult {
-                    Text(result.message)
-                        .font(.system(size: 13))
-                        .foregroundColor(result.success ? .green : .red)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(result.success ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
-                        .cornerRadius(6)
+                    if let result = testResult {
+                        Label(result.message, systemImage: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(result.success ? .green : .red)
+                    }
+
+                    Spacer()
                 }
             }
         }
@@ -285,154 +312,127 @@ struct ASRSettingsContent: View {
 
     @ViewBuilder
     private var qwenSettings: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SettingsTextField(
-                label: "API Key",
-                text: Binding(
-                    get: { manager.config.asr.qwen?.apiKey ?? "" },
-                    set: {
-                        if manager.config.asr.qwen == nil {
-                            manager.config.asr.qwen = QwenASRConfig()
-                        }
-                        manager.config.asr.qwen?.apiKey = $0
+        SettingsRow(label: "settings.asr.apikey".localized(), hint: "settings.asr.apikey.hint.dashscope".localized()) {
+            SecureField("", text: Binding(
+                get: { manager.config.asr.qwen?.apiKey ?? "" },
+                set: {
+                    if manager.config.asr.qwen == nil {
+                        manager.config.asr.qwen = QwenASRConfig()
                     }
-                ),
-                isSecure: true,
-                hint: "从阿里云百炼控制台获取 API Key"
-            )
+                    manager.config.asr.qwen?.apiKey = $0
+                }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 240)
+        }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("模型")
-                    .font(.system(size: 13, weight: .medium))
-
-                Text("qwen3-asr-flash-realtime (推荐)")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.secondary.opacity(0.1))
-                    .cornerRadius(6)
-
-                Text("支持 30+ 语言，中英混合识别更准确")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-            }
+        SettingsRow(label: "settings.asr.model".localized(), hint: "settings.asr.model.qwen.hint".localized()) {
+            Text("settings.asr.model.qwen.recommended".localized())
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.secondary.opacity(0.08))
+                .cornerRadius(4)
         }
     }
 
     @ViewBuilder
     private var dashscopeSettings: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SettingsTextField(
-                label: "API Key",
-                text: Binding(
-                    get: { manager.config.asr.dashscope?.apiKey ?? "" },
-                    set: {
-                        if manager.config.asr.dashscope == nil {
-                            manager.config.asr.dashscope = DashScopeASRConfig()
-                        }
-                        manager.config.asr.dashscope?.apiKey = $0
+        SettingsRow(label: "settings.asr.apikey".localized(), hint: "settings.asr.apikey.hint.dashscope".localized()) {
+            SecureField("", text: Binding(
+                get: { manager.config.asr.dashscope?.apiKey ?? "" },
+                set: {
+                    if manager.config.asr.dashscope == nil {
+                        manager.config.asr.dashscope = DashScopeASRConfig()
                     }
-                ),
-                isSecure: true,
-                hint: "从阿里云百炼控制台获取 API Key"
-            )
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("模型")
-                    .font(.system(size: 13, weight: .medium))
-
-                Picker("", selection: Binding(
-                    get: { manager.config.asr.dashscope?.model ?? "paraformer-realtime-v2" },
-                    set: {
-                        if manager.config.asr.dashscope == nil {
-                            manager.config.asr.dashscope = DashScopeASRConfig()
-                        }
-                        manager.config.asr.dashscope?.model = $0
-                    }
-                )) {
-                    ForEach(DashScopeASRConfig.availableModels, id: \.self) { model in
-                        Text(model).tag(model)
-                    }
+                    manager.config.asr.dashscope?.apiKey = $0
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(maxWidth: 300)
+            ))
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 240)
+        }
+
+        SettingsRow(label: "settings.asr.model".localized()) {
+            Picker("", selection: Binding(
+                get: { manager.config.asr.dashscope?.model ?? "paraformer-realtime-v2" },
+                set: {
+                    if manager.config.asr.dashscope == nil {
+                        manager.config.asr.dashscope = DashScopeASRConfig()
+                    }
+                    manager.config.asr.dashscope?.model = $0
+                }
+            )) {
+                ForEach(DashScopeASRConfig.availableModels, id: \.self) { model in
+                    Text(model).tag(model)
+                }
             }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 240)
         }
     }
 
     @ViewBuilder
     private var openaiSettings: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SettingsTextField(
-                label: "API Key",
-                text: Binding(
-                    get: { manager.config.asr.openai?.apiKey ?? "" },
-                    set: {
-                        if manager.config.asr.openai == nil {
-                            manager.config.asr.openai = OpenAIASRConfig()
-                        }
-                        manager.config.asr.openai?.apiKey = $0
+        SettingsRow(label: "settings.asr.apikey".localized()) {
+            SecureField("", text: Binding(
+                get: { manager.config.asr.openai?.apiKey ?? "" },
+                set: {
+                    if manager.config.asr.openai == nil {
+                        manager.config.asr.openai = OpenAIASRConfig()
                     }
-                ),
-                isSecure: true
-            )
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("模型")
-                    .font(.system(size: 13, weight: .medium))
-
-                Text("whisper-1")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.secondary.opacity(0.1))
-                    .cornerRadius(6)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("语言")
-                    .font(.system(size: 13, weight: .medium))
-
-                Picker("", selection: Binding(
-                    get: { manager.config.asr.openai?.language ?? "zh" },
-                    set: {
-                        if manager.config.asr.openai == nil {
-                            manager.config.asr.openai = OpenAIASRConfig()
-                        }
-                        manager.config.asr.openai?.language = $0
-                    }
-                )) {
-                    Text("中文").tag("zh")
-                    Text("English").tag("en")
-                    Text("日本語").tag("ja")
+                    manager.config.asr.openai?.apiKey = $0
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(maxWidth: 200)
+            ))
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 240)
+        }
+
+        SettingsRow(label: "settings.asr.model".localized()) {
+            Text("whisper-1")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.secondary.opacity(0.08))
+                .cornerRadius(4)
+        }
+
+        SettingsRow(label: "settings.asr.language".localized()) {
+            Picker("", selection: Binding(
+                get: { manager.config.asr.openai?.language ?? "zh" },
+                set: {
+                    if manager.config.asr.openai == nil {
+                        manager.config.asr.openai = OpenAIASRConfig()
+                    }
+                    manager.config.asr.openai?.language = $0
+                }
+            )) {
+                Text("settings.asr.language.chinese".localized()).tag("zh")
+                Text("settings.asr.language.english".localized()).tag("en")
+                Text("settings.asr.language.japanese".localized()).tag("ja")
             }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 160)
         }
     }
 
     @ViewBuilder
     private var funasrSettings: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SettingsTextField(
-                label: "服务地址",
-                text: Binding(
-                    get: { manager.config.asr.funasr?.endpoint ?? "ws://localhost:10096" },
-                    set: {
-                        if manager.config.asr.funasr == nil {
-                            manager.config.asr.funasr = FunASRConfig()
-                        }
-                        manager.config.asr.funasr?.endpoint = $0
+        SettingsRow(label: "settings.asr.endpoint".localized(), hint: "settings.asr.endpoint.funasr.hint".localized()) {
+            TextField("", text: Binding(
+                get: { manager.config.asr.funasr?.endpoint ?? "ws://localhost:10096" },
+                set: {
+                    if manager.config.asr.funasr == nil {
+                        manager.config.asr.funasr = FunASRConfig()
                     }
-                ),
-                isSecure: false,
-                hint: "本地 FunASR 服务的 WebSocket 地址"
-            )
+                    manager.config.asr.funasr?.endpoint = $0
+                }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 240)
         }
     }
 
@@ -440,22 +440,12 @@ struct ASRSettingsContent: View {
 
     @ViewBuilder
     private var vadSettingsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Divider()
-                .padding(.vertical, 4)
-
-            Text("VAD 语音活动检测")
-                .font(.system(size: 13, weight: .medium))
-
+        SettingsSection(title: "settings.vad.title".localized()) {
             // Presets
-            VStack(alignment: .leading, spacing: 8) {
-                Text("预设")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-
-                HStack(spacing: 8) {
+            SettingsRow(label: "settings.vad.presets".localized(), hint: "settings.vad.presets.hint".localized()) {
+                HStack(spacing: 6) {
                     ForEach(VADConfig.presets, id: \.name) { preset in
-                        Button(preset.name) {
+                        Button(preset.localizationKey.localized()) {
                             manager.config.asr.vad = preset.config
                         }
                         .buttonStyle(.bordered)
@@ -463,25 +453,11 @@ struct ASRSettingsContent: View {
                         .tint(isVADPresetSelected(preset.config) ? .accentColor : nil)
                     }
                 }
-
-                Text("快速响应适合短句，长句模式适合长段落朗读")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
             }
 
-            // Custom settings
-            VStack(alignment: .leading, spacing: 8) {
-                // Silence duration slider
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("静默阈值")
-                            .font(.system(size: 12))
-                        Spacer()
-                        Text("\(manager.config.asr.vad.silenceDurationMs) ms")
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundColor(.secondary)
-                    }
-
+            // Silence duration slider
+            SettingsRow(label: "settings.vad.silence".localized(), hint: "settings.vad.silence.hint".localized()) {
+                HStack(spacing: 12) {
                     Slider(
                         value: Binding(
                             get: { Double(manager.config.asr.vad.silenceDurationMs) },
@@ -490,34 +466,29 @@ struct ASRSettingsContent: View {
                         in: 100...1500,
                         step: 50
                     )
-                    .frame(maxWidth: 300)
+                    .frame(width: 160)
 
-                    Text("检测到多长时间的静默后结束语音识别。值越小响应越快，但可能打断句子。")
-                        .font(.system(size: 11))
+                    Text("\(manager.config.asr.vad.silenceDurationMs) ms")
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.secondary)
+                        .frame(width: 60, alignment: .trailing)
                 }
+            }
 
-                // Threshold slider
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("灵敏度阈值")
-                            .font(.system(size: 12))
-                        Spacer()
-                        Text(String(format: "%.2f", manager.config.asr.vad.threshold))
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundColor(.secondary)
-                    }
-
+            // Threshold slider
+            SettingsRow(label: "settings.vad.threshold".localized(), hint: "settings.vad.threshold.hint".localized()) {
+                HStack(spacing: 12) {
                     Slider(
                         value: $manager.config.asr.vad.threshold,
                         in: 0.1...0.9,
                         step: 0.05
                     )
-                    .frame(maxWidth: 300)
+                    .frame(width: 160)
 
-                    Text("语音活动检测灵敏度。值越低越灵敏，可能误触发；值越高越不敏感。")
-                        .font(.system(size: 11))
+                    Text(String(format: "%.2f", manager.config.asr.vad.threshold))
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.secondary)
+                        .frame(width: 60, alignment: .trailing)
                 }
             }
         }
@@ -548,9 +519,9 @@ struct ASRSettingsContent: View {
         Task {
             do {
                 try await Task.sleep(nanoseconds: 500_000_000)
-                testResult = (true, "连接成功")
+                testResult = (true, "settings.asr.test.success".localized())
             } catch {
-                testResult = (false, "连接失败: \(error.localizedDescription)")
+                testResult = (false, "settings.asr.test.failed".localized() + ": \(error.localizedDescription)")
             }
             isTesting = false
         }
@@ -565,69 +536,65 @@ struct LLMSettingsContent: View {
     @State private var testResult: (success: Bool, message: String)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("文本优化设置")
+        VStack(alignment: .leading, spacing: 24) {
+            // Header
+            Text("settings.llm.title".localized())
                 .font(.system(size: 18, weight: .semibold))
 
-            // Enable toggle
-            Toggle("启用 LLM 文本优化", isOn: $manager.config.llm.enabled)
-                .font(.system(size: 14))
-
-            Text("对语音识别结果进行优化，修正错误、添加标点")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
+            // Enable Section
+            SettingsSection {
+                SettingsRow(label: "settings.llm.enable".localized(), hint: "settings.llm.enable.hint".localized()) {
+                    Toggle("", isOn: $manager.config.llm.enabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+            }
 
             if manager.config.llm.enabled {
-                Divider()
-                    .padding(.vertical, 4)
-
-                // Provider picker
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("LLM 服务商")
-                        .font(.system(size: 13, weight: .medium))
-
-                    Picker("", selection: $manager.config.llm.provider) {
-                        ForEach(LLMProvider.allCases) { provider in
-                            Text(provider.displayName).tag(provider)
+                // Provider Section
+                SettingsSection {
+                    SettingsRow(label: "settings.llm.provider".localized()) {
+                        Picker("", selection: $manager.config.llm.provider) {
+                            ForEach(LLMProvider.allCases) { provider in
+                                Text(provider.displayName).tag(provider)
+                            }
                         }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 200)
                     }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(maxWidth: 300)
-                }
 
-                // Provider-specific settings
-                providerSettings
+                    // Provider-specific settings
+                    providerSettings
+                }
 
                 // Test button for Ollama
                 if manager.config.llm.provider == .ollama {
-                    HStack(spacing: 12) {
-                        Button(action: testOllama) {
-                            HStack(spacing: 6) {
-                                if isTesting {
-                                    ProgressView()
-                                        .scaleEffect(0.7)
+                    SettingsSection {
+                        HStack(spacing: 12) {
+                            Button(action: testOllama) {
+                                HStack(spacing: 6) {
+                                    if isTesting {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                    }
+                                    Text(isTesting ? "settings.asr.testing".localized() : "settings.asr.test".localized())
                                 }
-                                Text(isTesting ? "测试中..." : "测试")
+                                .frame(minWidth: 80)
                             }
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(isTesting)
+                            .buttonStyle(.bordered)
+                            .disabled(isTesting)
 
-                        if let result = testResult {
-                            Text(result.message)
-                                .font(.system(size: 13))
-                                .foregroundColor(result.success ? .green : .red)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(result.success ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
-                                .cornerRadius(6)
+                            if let result = testResult {
+                                Label(result.message, systemImage: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(result.success ? .green : .red)
+                            }
+
+                            Spacer()
                         }
                     }
                 }
-
-                Divider()
-                    .padding(.vertical, 4)
 
                 // Custom prompt section
                 customPromptSection
@@ -639,46 +606,44 @@ struct LLMSettingsContent: View {
 
     @ViewBuilder
     private var customPromptSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("自定义 Prompt")
-                    .font(.system(size: 13, weight: .medium))
+        SettingsSection(title: "settings.llm.prompt".localized()) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("settings.llm.prompt.hint".localized())
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
 
-                Spacer()
+                    Spacer()
 
-                if manager.config.llm.customPrompt != nil {
-                    Button("重置为默认") {
-                        manager.config.llm.customPrompt = nil
+                    if manager.config.llm.customPrompt != nil {
+                        Button("settings.llm.prompt.reset".localized()) {
+                            manager.config.llm.customPrompt = nil
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
                 }
+
+                TextEditor(text: Binding(
+                    get: { manager.config.llm.customPrompt ?? LLMPrompt.defaultRefinePrompt },
+                    set: { newValue in
+                        if newValue == LLMPrompt.defaultRefinePrompt {
+                            manager.config.llm.customPrompt = nil
+                        } else {
+                            manager.config.llm.customPrompt = newValue
+                        }
+                    }
+                ))
+                .font(.system(size: 12, design: .monospaced))
+                .frame(height: 100)
+                .padding(8)
+                .background(Color(NSColor.textBackgroundColor))
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                )
             }
-
-            TextEditor(text: Binding(
-                get: { manager.config.llm.customPrompt ?? LLMPrompt.defaultRefinePrompt },
-                set: { newValue in
-                    // Only set customPrompt if different from default
-                    if newValue == LLMPrompt.defaultRefinePrompt {
-                        manager.config.llm.customPrompt = nil
-                    } else {
-                        manager.config.llm.customPrompt = newValue
-                    }
-                }
-            ))
-            .font(.system(size: 12, design: .monospaced))
-            .frame(minHeight: 120, maxHeight: 160)
-            .padding(8)
-            .background(Color(NSColor.textBackgroundColor))
-            .cornerRadius(8)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-            )
-
-            Text("自定义发送给 LLM 的系统 Prompt，用于文本优化。")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
         }
     }
 
@@ -696,111 +661,99 @@ struct LLMSettingsContent: View {
 
     @ViewBuilder
     private var dashscopeSettings: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SettingsTextField(
-                label: "API Key",
-                text: Binding(
-                    get: { manager.config.llm.dashscope?.apiKey ?? "" },
-                    set: {
-                        if manager.config.llm.dashscope == nil {
-                            manager.config.llm.dashscope = DashScopeLLMConfig()
-                        }
-                        manager.config.llm.dashscope?.apiKey = $0
+        SettingsRow(label: "settings.asr.apikey".localized(), hint: "settings.llm.apikey.hint.dashscope".localized()) {
+            SecureField("", text: Binding(
+                get: { manager.config.llm.dashscope?.apiKey ?? "" },
+                set: {
+                    if manager.config.llm.dashscope == nil {
+                        manager.config.llm.dashscope = DashScopeLLMConfig()
                     }
-                ),
-                isSecure: true,
-                hint: "可以留空，将自动使用语音识别的 API Key"
-            )
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("模型")
-                    .font(.system(size: 13, weight: .medium))
-
-                Picker("", selection: Binding(
-                    get: { manager.config.llm.dashscope?.model ?? "qwen-plus" },
-                    set: {
-                        if manager.config.llm.dashscope == nil {
-                            manager.config.llm.dashscope = DashScopeLLMConfig()
-                        }
-                        manager.config.llm.dashscope?.model = $0
-                    }
-                )) {
-                    ForEach(DashScopeLLMConfig.availableModels, id: \.self) { model in
-                        Text(model).tag(model)
-                    }
+                    manager.config.llm.dashscope?.apiKey = $0
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(maxWidth: 300)
+            ))
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 240)
+        }
+
+        SettingsRow(label: "settings.asr.model".localized()) {
+            Picker("", selection: Binding(
+                get: { manager.config.llm.dashscope?.model ?? "qwen-plus" },
+                set: {
+                    if manager.config.llm.dashscope == nil {
+                        manager.config.llm.dashscope = DashScopeLLMConfig()
+                    }
+                    manager.config.llm.dashscope?.model = $0
+                }
+            )) {
+                ForEach(DashScopeLLMConfig.availableModels, id: \.self) { model in
+                    Text(model).tag(model)
+                }
             }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 200)
         }
     }
 
     @ViewBuilder
     private var openaiSettings: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SettingsTextField(
-                label: "API Key",
-                text: Binding(
-                    get: { manager.config.llm.openai?.apiKey ?? "" },
-                    set: {
-                        if manager.config.llm.openai == nil {
-                            manager.config.llm.openai = OpenAILLMConfig()
-                        }
-                        manager.config.llm.openai?.apiKey = $0
+        SettingsRow(label: "settings.asr.apikey".localized()) {
+            SecureField("", text: Binding(
+                get: { manager.config.llm.openai?.apiKey ?? "" },
+                set: {
+                    if manager.config.llm.openai == nil {
+                        manager.config.llm.openai = OpenAILLMConfig()
                     }
-                ),
-                isSecure: true
-            )
+                    manager.config.llm.openai?.apiKey = $0
+                }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 240)
+        }
 
-            SettingsTextField(
-                label: "模型",
-                text: Binding(
-                    get: { manager.config.llm.openai?.model ?? "gpt-4o-mini" },
-                    set: {
-                        if manager.config.llm.openai == nil {
-                            manager.config.llm.openai = OpenAILLMConfig()
-                        }
-                        manager.config.llm.openai?.model = $0
+        SettingsRow(label: "settings.asr.model".localized()) {
+            TextField("", text: Binding(
+                get: { manager.config.llm.openai?.model ?? "gpt-4o-mini" },
+                set: {
+                    if manager.config.llm.openai == nil {
+                        manager.config.llm.openai = OpenAILLMConfig()
                     }
-                ),
-                isSecure: false
-            )
+                    manager.config.llm.openai?.model = $0
+                }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 200)
         }
     }
 
     @ViewBuilder
     private var ollamaSettings: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SettingsTextField(
-                label: "服务地址",
-                text: Binding(
-                    get: { manager.config.llm.ollama?.endpoint ?? "http://localhost:11434" },
-                    set: {
-                        if manager.config.llm.ollama == nil {
-                            manager.config.llm.ollama = OllamaLLMConfig()
-                        }
-                        manager.config.llm.ollama?.endpoint = $0
+        SettingsRow(label: "settings.llm.endpoint".localized(), hint: "settings.llm.endpoint.ollama.hint".localized()) {
+            TextField("", text: Binding(
+                get: { manager.config.llm.ollama?.endpoint ?? "http://localhost:11434" },
+                set: {
+                    if manager.config.llm.ollama == nil {
+                        manager.config.llm.ollama = OllamaLLMConfig()
                     }
-                ),
-                isSecure: false,
-                hint: "本地 Ollama 服务地址"
-            )
+                    manager.config.llm.ollama?.endpoint = $0
+                }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 240)
+        }
 
-            SettingsTextField(
-                label: "模型",
-                text: Binding(
-                    get: { manager.config.llm.ollama?.model ?? "qwen3:8b" },
-                    set: {
-                        if manager.config.llm.ollama == nil {
-                            manager.config.llm.ollama = OllamaLLMConfig()
-                        }
-                        manager.config.llm.ollama?.model = $0
+        SettingsRow(label: "settings.asr.model".localized(), hint: "settings.llm.model.ollama.hint".localized()) {
+            TextField("", text: Binding(
+                get: { manager.config.llm.ollama?.model ?? "qwen3:8b" },
+                set: {
+                    if manager.config.llm.ollama == nil {
+                        manager.config.llm.ollama = OllamaLLMConfig()
                     }
-                ),
-                isSecure: false,
-                hint: "已安装的 Ollama 模型名称"
-            )
+                    manager.config.llm.ollama?.model = $0
+                }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 200)
         }
     }
 
@@ -811,9 +764,9 @@ struct LLMSettingsContent: View {
         Task {
             do {
                 try await Task.sleep(nanoseconds: 500_000_000)
-                testResult = (true, "连接成功")
+                testResult = (true, "settings.asr.test.success".localized())
             } catch {
-                testResult = (false, "连接失败: \(error.localizedDescription)")
+                testResult = (false, "settings.asr.test.failed".localized() + ": \(error.localizedDescription)")
             }
             isTesting = false
         }
@@ -838,72 +791,76 @@ struct HotkeySettingsContent: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("快捷键设置")
+        VStack(alignment: .leading, spacing: 24) {
+            // Header
+            Text("settings.hotkey.title".localized())
                 .font(.system(size: 18, weight: .semibold))
 
             // Accessibility warning
             if permissionManager.accessibilityStatus != .granted {
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
+                        .font(.system(size: 14))
 
-                    Text("需要辅助功能权限才能使用全局快捷键。")
-                        .font(.system(size: 13))
+                    Text("settings.hotkey.accessibility.warning".localized())
+                        .font(.system(size: 12))
 
-                    Button("打开设置") {
+                    Spacer()
+
+                    Button("alert.button.open_settings".localized()) {
                         permissionManager.openAccessibilitySettings()
                     }
                     .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
                 .padding(12)
                 .background(Color.orange.opacity(0.1))
                 .cornerRadius(8)
             }
 
-            // Current hotkey display
-            VStack(alignment: .leading, spacing: 8) {
-                Text("触发键")
-                    .font(.system(size: 13, weight: .medium))
-
+            // Current hotkey section
+            SettingsSection(title: "settings.hotkey.trigger".localized()) {
                 if hotkeyManager.isListeningForHotkey {
                     // Recording mode
                     VStack(spacing: 12) {
                         HStack {
                             Image(systemName: "keyboard")
                                 .foregroundColor(.orange)
-                            Text("请按下新的快捷键...")
+                            Text("settings.hotkey.recording".localized())
                                 .foregroundColor(.orange)
                         }
                         .font(.system(size: 13))
 
                         if let pending = hotkeyManager.pendingHotkey {
                             Text(pending.displayString)
-                                .font(.system(size: 16, weight: .medium, design: .monospaced))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
+                                .font(.system(size: 15, weight: .medium, design: .monospaced))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
                                 .background(Color.accentColor.opacity(0.15))
-                                .cornerRadius(8)
+                                .cornerRadius(6)
                         } else {
-                            Text("等待输入...")
-                                .font(.system(size: 13))
+                            Text("settings.hotkey.waiting".localized())
+                                .font(.system(size: 12))
                                 .foregroundColor(.secondary)
                         }
 
-                        HStack(spacing: 12) {
-                            Button("取消") {
+                        HStack(spacing: 10) {
+                            Button("settings.hotkey.cancel".localized()) {
                                 hotkeyManager.cancelHotkeyRecording()
                             }
                             .buttonStyle(.bordered)
+                            .controlSize(.small)
 
-                            Button("确定") {
+                            Button("settings.hotkey.confirm".localized()) {
                                 hotkeyManager.confirmPendingHotkey()
                             }
                             .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
                             .disabled(hotkeyManager.pendingHotkey == nil)
                         }
                     }
-                    .padding(16)
+                    .padding(14)
                     .frame(maxWidth: .infinity)
                     .background(Color.orange.opacity(0.05))
                     .cornerRadius(8)
@@ -913,53 +870,53 @@ struct HotkeySettingsContent: View {
                     )
                 } else {
                     // Normal display
-                    HStack {
-                        Text(hotkeyManager.currentHotkey.displayString)
-                            .font(.system(size: 14, weight: .medium, design: .monospaced))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(Color.secondary.opacity(0.1))
-                            .cornerRadius(8)
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 12) {
+                            Text(hotkeyManager.currentHotkey.displayString)
+                                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color.secondary.opacity(0.1))
+                                .cornerRadius(6)
 
-                        Button("修改快捷键") {
-                            hotkeyManager.startListeningForNewHotkey()
-                        }
-                        .buttonStyle(.bordered)
+                            Button("settings.hotkey.change".localized()) {
+                                hotkeyManager.startListeningForNewHotkey()
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
 
-                        Button("重置") {
-                            // Reset to default (Option key)
-                            hotkeyManager.updateHotkey(.default)
+                            Button("settings.hotkey.reset".localized()) {
+                                hotkeyManager.updateHotkey(.default)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
                         }
-                        .buttonStyle(.bordered)
+
+                        Text("settings.hotkey.hint".localized())
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
                     }
                 }
-
-                Text("点击输入框后按下快捷键进行设置。支持单键或组合键。")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
             }
-
-            Divider()
-                .padding(.vertical, 4)
 
             // Preset hotkeys
-            VStack(alignment: .leading, spacing: 8) {
-                Text("常用快捷键")
-                    .font(.system(size: 13, weight: .medium))
-
-                HStack(spacing: 8) {
-                    ForEach(presetHotkeys, id: \.0) { (name, config) in
-                        Button(name) {
-                            hotkeyManager.updateHotkey(config)
+            SettingsSection(title: "settings.hotkey.common".localized()) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 6) {
+                        ForEach(presetHotkeys, id: \.0) { (name, config) in
+                            Button(name) {
+                                hotkeyManager.updateHotkey(config)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
                         }
-                        .buttonStyle(.bordered)
                     }
+
+                    Text("settings.hotkey.usage".localized())
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
                 }
             }
-
-            Text("按住此键开始录音，松开后进行语音识别并输出文字")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
         }
     }
 }
@@ -971,124 +928,66 @@ struct PermissionsSettingsContent: View {
     @State private var isRefreshing = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("系统权限")
-                .font(.system(size: 18, weight: .semibold))
+        VStack(alignment: .leading, spacing: 24) {
+            // Header
+            VStack(alignment: .leading, spacing: 6) {
+                Text("permissions.title".localized())
+                    .font(.system(size: 18, weight: .semibold))
 
-            Text("Vhisper 需要以下系统权限才能正常工作。")
-                .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                Text("permissions.description".localized())
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
 
-            // Accessibility permission
-            permissionItem(
-                title: "辅助功能",
-                description: "用于监听全局快捷键",
-                status: permissionManager.accessibilityStatus,
-                openSettings: { permissionManager.openAccessibilitySettings() }
-            )
+            // Permission cards
+            VStack(spacing: 12) {
+                // Accessibility permission
+                PermissionCard(
+                    icon: "hand.raised.fill",
+                    title: "permissions.accessibility".localized(),
+                    description: "permissions.accessibility.description".localized(),
+                    status: permissionManager.accessibilityStatus,
+                    instruction: permissionManager.accessibilityStatus == .granted
+                        ? "permissions.accessibility.granted".localized()
+                        : "permissions.accessibility.instruction".localized(),
+                    openSettings: { permissionManager.openAccessibilitySettings() }
+                )
 
-            // Microphone permission
-            permissionItem(
-                title: "麦克风",
-                description: "用于录制语音",
-                status: permissionManager.microphoneStatus,
-                openSettings: { permissionManager.openMicrophoneSettings() }
-            )
+                // Microphone permission
+                PermissionCard(
+                    icon: "mic.fill",
+                    title: "permissions.microphone".localized(),
+                    description: "permissions.microphone.description".localized(),
+                    status: permissionManager.microphoneStatus,
+                    instruction: permissionManager.microphoneStatus == .granted
+                        ? "permissions.microphone.granted".localized()
+                        : "permissions.microphone.manual_instruction".localized(),
+                    openSettings: { permissionManager.openMicrophoneSettings() }
+                )
+            }
 
             // Refresh button
-            Button(action: refreshPermissions) {
-                HStack(spacing: 6) {
-                    if isRefreshing {
-                        ProgressView()
-                            .scaleEffect(0.7)
+            HStack {
+                Button(action: refreshPermissions) {
+                    HStack(spacing: 6) {
+                        if isRefreshing {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        Text(isRefreshing ? "permissions.button.refreshing".localized() : "permissions.button.refresh".localized())
                     }
-                    Text(isRefreshing ? "检查中..." : "刷新状态")
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(isRefreshing)
+
+                Spacer()
             }
-            .buttonStyle(.bordered)
-            .disabled(isRefreshing)
         }
         .onAppear {
             permissionManager.checkAllPermissions()
-        }
-    }
-
-    private func permissionItem(
-        title: String,
-        description: String,
-        status: PermissionManager.PermissionStatus,
-        openSettings: @escaping () -> Void
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 14, weight: .medium))
-                    Text(description)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
-
-                statusView(status)
-            }
-
-            if status != .granted {
-                Button("打开系统设置") {
-                    openSettings()
-                }
-                .buttonStyle(.bordered)
-            }
-
-            Text(status == .granted ? "权限已授予。" : "在系统设置中找到 Vhisper 并勾选启用。")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-        }
-        .padding(16)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-        )
-    }
-
-    @ViewBuilder
-    private func statusView(_ status: PermissionManager.PermissionStatus) -> some View {
-        switch status {
-        case .granted:
-            HStack(spacing: 4) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-                Text("已授权")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.green)
-            }
-        case .denied:
-            HStack(spacing: 4) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.red)
-                Text("未授权")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.red)
-            }
-        case .notDetermined:
-            HStack(spacing: 4) {
-                Image(systemName: "questionmark.circle.fill")
-                    .foregroundColor(.orange)
-                Text("未请求")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.orange)
-            }
-        case .unknown:
-            HStack(spacing: 4) {
-                Image(systemName: "minus.circle.fill")
-                    .foregroundColor(.gray)
-                Text("未知")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.gray)
-            }
         }
     }
 
@@ -1097,40 +996,179 @@ struct PermissionsSettingsContent: View {
         permissionManager.forceRefreshMicrophonePermission()
         permissionManager.forceRefreshAccessibilityPermission()
 
-        // Give time for async refresh to complete
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             isRefreshing = false
         }
     }
 }
 
-// MARK: - Settings Text Field
+// MARK: - Permission Card
 
-struct SettingsTextField: View {
-    let label: String
-    @Binding var text: String
-    var isSecure: Bool = false
-    var hint: String? = nil
+struct PermissionCard: View {
+    let icon: String
+    let title: String
+    let description: String
+    let status: PermissionManager.PermissionStatus
+    let instruction: String
+    let openSettings: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(label)
-                .font(.system(size: 13, weight: .medium))
+        HStack(spacing: 14) {
+            // Icon
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(statusColor)
+                .frame(width: 36, height: 36)
+                .background(statusColor.opacity(0.12))
+                .cornerRadius(8)
 
-            if isSecure {
-                SecureField("", text: $text)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 350)
-            } else {
-                TextField("", text: $text)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 350)
+            // Content
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(title)
+                        .font(.system(size: 13, weight: .medium))
+
+                    Spacer()
+
+                    statusBadge
+                }
+
+                Text(description)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+
+                if status != .granted {
+                    Text(instruction)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .padding(.top, 2)
+                }
+            }
+
+            // Action button
+            if status != .granted {
+                Button(action: openSettings) {
+                    Image(systemName: "arrow.up.forward.square")
+                        .font(.system(size: 14))
+                }
+                .buttonStyle(.borderless)
+                .foregroundColor(.accentColor)
+            }
+        }
+        .padding(14)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(statusColor.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    private var statusColor: Color {
+        switch status {
+        case .granted: return .green
+        case .denied: return .red
+        case .notDetermined: return .orange
+        case .unknown: return .gray
+        }
+    }
+
+    private var statusBadge: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 6, height: 6)
+            Text(statusText)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(statusColor)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(statusColor.opacity(0.1))
+        .cornerRadius(10)
+    }
+
+    private var statusText: String {
+        switch status {
+        case .granted: return "permissions.status.granted".localized()
+        case .denied: return "permissions.status.denied".localized()
+        case .notDetermined: return "permissions.status.not_requested".localized()
+        case .unknown: return "permissions.status.unknown".localized()
+        }
+    }
+}
+
+// MARK: - Settings Section
+
+struct SettingsSection<Content: View>: View {
+    let title: String?
+    let content: Content
+
+    init(title: String? = nil, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let title = title {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 14) {
+                content
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
+            )
+        }
+    }
+}
+
+// MARK: - Settings Row
+
+struct SettingsRow<Content: View>: View {
+    let label: String
+    let hint: String?
+    let content: Content
+
+    private let labelWidth: CGFloat = 140
+
+    init(label: String, hint: String? = nil, @ViewBuilder content: () -> Content) {
+        self.label = label
+        self.hint = hint
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 16) {
+                Text(label)
+                    .font(.system(size: 13))
+                    .foregroundColor(.primary)
+                    .frame(width: labelWidth, alignment: .trailing)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    content
+                }
             }
 
             if let hint = hint {
-                Text(hint)
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                HStack(spacing: 0) {
+                    Spacer()
+                        .frame(width: labelWidth + 16)
+                    Text(hint)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
@@ -1144,39 +1182,35 @@ struct VocabularySettingsContent: View {
     @State private var newCategoryName = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("词库设置")
+        VStack(alignment: .leading, spacing: 24) {
+            // Header
+            Text("settings.vocabulary.title".localized())
                 .font(.system(size: 18, weight: .semibold))
 
-            // Enable toggle
-            Toggle("启用词库功能", isOn: $manager.config.vocabulary.enabled)
-                .font(.system(size: 14))
-
-            Text("定义自定义词库以提高专业术语的识别准确度。")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
+            // Enable Section
+            SettingsSection {
+                SettingsRow(label: "settings.vocabulary.enable".localized(), hint: "settings.vocabulary.enable.hint".localized()) {
+                    Toggle("", isOn: $manager.config.vocabulary.enabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+            }
 
             if manager.config.vocabulary.enabled {
-                Divider()
-                    .padding(.vertical, 4)
-
                 // Processing options
-                VStack(alignment: .leading, spacing: 8) {
-                    Toggle("Post-ASR 文本替换", isOn: $manager.config.vocabulary.enablePostASRReplacement)
-                        .font(.system(size: 13))
-                    Text("在语音识别后直接进行文本替换")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                SettingsSection(title: "settings.vocabulary.postASR".localized()) {
+                    SettingsRow(label: "settings.vocabulary.postASR".localized(), hint: "settings.vocabulary.postASR.hint".localized()) {
+                        Toggle("", isOn: $manager.config.vocabulary.enablePostASRReplacement)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                    }
 
-                    Toggle("LLM 上下文注入", isOn: $manager.config.vocabulary.enableLLMInjection)
-                        .font(.system(size: 13))
-                    Text("将词库信息注入到 LLM Prompt 中进行智能修正")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
+                    SettingsRow(label: "settings.vocabulary.llmInjection".localized(), hint: "settings.vocabulary.llmInjection.hint".localized()) {
+                        Toggle("", isOn: $manager.config.vocabulary.enableLLMInjection)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                    }
                 }
-
-                Divider()
-                    .padding(.vertical, 4)
 
                 // Categories section
                 categoriesSection
@@ -1190,49 +1224,56 @@ struct VocabularySettingsContent: View {
     private var categoriesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("词库分类")
-                    .font(.system(size: 14, weight: .medium))
+                Text("settings.vocabulary.categories".localized())
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
 
                 Spacer()
 
                 Button(action: { isAddingCategory = true }) {
-                    Label("添加分类", systemImage: "plus")
+                    Label("settings.vocabulary.categories.add".localized(), systemImage: "plus")
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             }
 
-            if manager.config.vocabulary.categories.isEmpty {
-                Text("暂无分类。添加分类后可以开始定义词库。")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .padding(.vertical, 8)
-            } else {
-                ForEach($manager.config.vocabulary.categories) { $category in
-                    VocabularyCategoryRow(category: $category, onDelete: {
-                        manager.config.vocabulary.categories.removeAll { $0.id == category.id }
-                    })
+            VStack(spacing: 8) {
+                if manager.config.vocabulary.categories.isEmpty && !isAddingCategory {
+                    Text("settings.vocabulary.categories.empty".localized())
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                        .cornerRadius(8)
+                } else {
+                    ForEach($manager.config.vocabulary.categories) { $category in
+                        VocabularyCategoryRow(category: $category, onDelete: {
+                            manager.config.vocabulary.categories.removeAll { $0.id == category.id }
+                        })
+                    }
                 }
-            }
 
-            // Add category form
-            if isAddingCategory {
-                addCategoryView
+                // Add category form
+                if isAddingCategory {
+                    addCategoryView
+                }
             }
         }
     }
 
     @ViewBuilder
     private var addCategoryView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("新分类")
-                .font(.system(size: 13, weight: .medium))
+        VStack(alignment: .leading, spacing: 10) {
+            Text("settings.vocabulary.category.new".localized())
+                .font(.system(size: 12, weight: .medium))
 
-            HStack {
-                TextField("分类名称 (如: 品牌名、人名)", text: $newCategoryName)
+            HStack(spacing: 10) {
+                TextField("settings.vocabulary.category.name".localized(), text: $newCategoryName)
                     .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 200)
 
-                Button("添加") {
+                Button("settings.vocabulary.add".localized()) {
                     guard !newCategoryName.isEmpty else { return }
                     let category = VocabularyCategory(name: newCategoryName)
                     manager.config.vocabulary.categories.append(category)
@@ -1240,17 +1281,19 @@ struct VocabularySettingsContent: View {
                     isAddingCategory = false
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.small)
                 .disabled(newCategoryName.isEmpty)
 
-                Button("取消") {
+                Button("settings.vocabulary.cancel".localized()) {
                     newCategoryName = ""
                     isAddingCategory = false
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.small)
             }
         }
         .padding(12)
-        .background(Color.secondary.opacity(0.1))
+        .background(Color.accentColor.opacity(0.08))
         .cornerRadius(8)
     }
 }
@@ -1267,21 +1310,24 @@ struct VocabularyCategoryRow: View {
     @State private var newVariants = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             // Header
-            HStack {
+            HStack(spacing: 10) {
                 Toggle("", isOn: $category.enabled)
                     .labelsHidden()
-                    .scaleEffect(0.8)
+                    .scaleEffect(0.75)
 
-                Button(action: { isExpanded.toggle() }) {
-                    HStack {
+                Button(action: { withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() } }) {
+                    HStack(spacing: 6) {
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 10))
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.secondary)
+
                         Text(category.name)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 12, weight: .medium))
+
                         Text("(\(category.entries.count))")
-                            .font(.system(size: 11))
+                            .font(.system(size: 10))
                             .foregroundColor(.secondary)
                     }
                 }
@@ -1291,21 +1337,29 @@ struct VocabularyCategoryRow: View {
 
                 if isExpanded {
                     Button(action: { isAddingEntry = true }) {
-                        Image(systemName: "plus.circle")
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.accentColor)
                     }
                     .buttonStyle(.plain)
                 }
 
                 Button(action: onDelete) {
                     Image(systemName: "trash")
-                        .foregroundColor(.red)
+                        .font(.system(size: 12))
+                        .foregroundColor(.red.opacity(0.7))
                 }
                 .buttonStyle(.plain)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
 
             // Entries (when expanded)
             if isExpanded {
-                VStack(alignment: .leading, spacing: 4) {
+                Divider()
+                    .padding(.horizontal, 12)
+
+                VStack(alignment: .leading, spacing: 0) {
                     ForEach($category.entries) { $entry in
                         VocabularyEntryRow(entry: $entry, onDelete: {
                             category.entries.removeAll { $0.id == entry.id }
@@ -1314,29 +1368,44 @@ struct VocabularyCategoryRow: View {
 
                     if isAddingEntry {
                         addEntryView
+                            .padding(10)
+                    }
+
+                    if category.entries.isEmpty && !isAddingEntry {
+                        Text("settings.vocabulary.categories.empty".localized())
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .padding(12)
                     }
                 }
-                .padding(.leading, 24)
+                .padding(.leading, 20)
             }
         }
-        .padding(12)
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
         .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.secondary.opacity(0.1), lineWidth: 1)
+        )
     }
 
     @ViewBuilder
     private var addEntryView: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            TextField("正确词汇 (如: Vimo)", text: $newCorrectWord)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 12))
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                TextField("settings.vocabulary.entry.correct".localized(), text: $newCorrectWord)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11))
+                    .frame(width: 120)
 
-            TextField("可能的错误写法，用逗号分隔 (如: weimo, wei mo)", text: $newVariants)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 12))
+                TextField("settings.vocabulary.entry.variants".localized(), text: $newVariants)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11))
+                    .frame(maxWidth: 200)
+            }
 
-            HStack {
-                Button("添加") {
+            HStack(spacing: 8) {
+                Button("settings.vocabulary.add".localized()) {
                     guard !newCorrectWord.isEmpty, !newVariants.isEmpty else { return }
                     let variants = newVariants.split(separator: ",").map {
                         String($0).trimmingCharacters(in: .whitespaces)
@@ -1348,20 +1417,20 @@ struct VocabularyCategoryRow: View {
                     isAddingEntry = false
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                .controlSize(.mini)
                 .disabled(newCorrectWord.isEmpty || newVariants.isEmpty)
 
-                Button("取消") {
+                Button("settings.vocabulary.cancel".localized()) {
                     newCorrectWord = ""
                     newVariants = ""
                     isAddingEntry = false
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.small)
+                .controlSize(.mini)
             }
         }
-        .padding(8)
-        .background(Color.accentColor.opacity(0.1))
+        .padding(10)
+        .background(Color.accentColor.opacity(0.08))
         .cornerRadius(6)
     }
 }
@@ -1373,23 +1442,70 @@ struct VocabularyEntryRow: View {
     let onDelete: () -> Void
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entry.correctWord)
-                    .font(.system(size: 12, weight: .medium))
-                Text(entry.errorVariants.joined(separator: ", "))
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-            }
+        HStack(spacing: 10) {
+            Text(entry.correctWord)
+                .font(.system(size: 11, weight: .medium))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.accentColor.opacity(0.1))
+                .cornerRadius(4)
+
+            Image(systemName: "arrow.left")
+                .font(.system(size: 9))
+                .foregroundColor(.secondary)
+
+            Text(entry.errorVariants.joined(separator: ", "))
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
 
             Spacer()
 
             Button(action: onDelete) {
-                Image(systemName: "xmark.circle")
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .medium))
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+    }
+}
+
+// MARK: - General Settings Content
+
+struct GeneralSettingsContent: View {
+    @EnvironmentObject var manager: VhisperManager
+    @ObservedObject private var localizationManager = LocalizationManager.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            // Header
+            Text("settings.general.title".localized())
+                .font(.system(size: 18, weight: .semibold))
+
+            // Language Section
+            SettingsSection {
+                SettingsRow(label: "settings.language.title".localized(), hint: "settings.language.description".localized()) {
+                    Picker("", selection: $manager.config.general.language) {
+                        ForEach(AppLanguage.allCases) { language in
+                            Text(language.displayName).tag(language)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(width: 160)
+                    .onChange(of: manager.config.general.language) { newLanguage in
+                        localizationManager.setLanguage(newLanguage)
+                    }
+                }
+            }
+
+            Spacer()
+        }
+        .onAppear {
+            localizationManager.setLanguage(manager.config.general.language)
+        }
     }
 }

@@ -31,6 +31,7 @@
 		B2D096DD2B5E8DD9973A4246 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F911C5B70A1661BE8679C0C /* AppConfig.swift */; };
 		B7C18F1562EAC517BD8BC145 /* KeySimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7ADFCE8A0305B0048E863A8 /* KeySimulator.swift */; };
 		C026E55180D2F4D10DF40928 /* AudioLevelMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F2CBBE0C4BA31B6AF636E54 /* AudioLevelMonitor.swift */; };
+		C2CEF717B75374804663C80F /* LocalizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A157F5C2F5F11AE93DD6F53A /* LocalizationManager.swift */; };
 		C3EB43941614A0D1F8939AC0 /* LLMProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77570817BA523108224EB978 /* LLMProtocol.swift */; };
 		C59A24A681043DBC0C2A3903 /* OllamaLLM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140A85868DE24208C27661CD /* OllamaLLM.swift */; };
 		CD57B9026CAC8F7C8F39CED3 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0844D25392959B288DF198E /* HotkeyManager.swift */; };
@@ -66,6 +67,7 @@
 		77570817BA523108224EB978 /* LLMProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProtocol.swift; sourceTree = "<group>"; };
 		7E030A2A6F783A5C8AAF63BE /* NetworkConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkConfig.swift; sourceTree = "<group>"; };
 		9F3560958F3251FEEED103CE /* DashScopeLLM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashScopeLLM.swift; sourceTree = "<group>"; };
+		A157F5C2F5F11AE93DD6F53A /* LocalizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationManager.swift; sourceTree = "<group>"; };
 		A20266F0197889B64008C63D /* OpenAILLM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAILLM.swift; sourceTree = "<group>"; };
 		AAA728BBC483F61114AAB5B1 /* ASRProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASRProtocol.swift; sourceTree = "<group>"; };
 		B19B2EBD1DC3AA6F112F2A4B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -110,6 +112,7 @@
 				99C31637EF72255C615DF2F7 /* Audio */,
 				568A075FAEF75F6B4E965FB1 /* Config */,
 				75CB8783D1B0A6AC81476872 /* LLM */,
+				6D7979DCBF4C87C268A4508E /* Localization */,
 				E3CC07C3D1BDAC25BD45FF1E /* Network */,
 				D3FE7E6E333F1D4F9294CEDA /* Pipeline */,
 				4D1D0D8D634AC65F54F0375A /* Vocabulary */,
@@ -208,6 +211,14 @@
 				44543319B1449609D48F9003 /* ConfigStorage.swift */,
 			);
 			path = Config;
+			sourceTree = "<group>";
+		};
+		6D7979DCBF4C87C268A4508E /* Localization */ = {
+			isa = PBXGroup;
+			children = (
+				A157F5C2F5F11AE93DD6F53A /* LocalizationManager.swift */,
+			);
+			path = Localization;
 			sourceTree = "<group>";
 		};
 		75CB8783D1B0A6AC81476872 /* LLM */ = {
@@ -380,6 +391,7 @@
 				B7C18F1562EAC517BD8BC145 /* KeySimulator.swift in Sources */,
 				C3EB43941614A0D1F8939AC0 /* LLMProtocol.swift in Sources */,
 				4F4A7CC01FE432B80900E229 /* LLMSettingsView.swift in Sources */,
+				C2CEF717B75374804663C80F /* LocalizationManager.swift in Sources */,
 				E7B9244618042C7CFD80DEC2 /* MenuBarView.swift in Sources */,
 				78925505A39F105D0C604BE8 /* MetaballWaveformView.swift in Sources */,
 				006399087749A60C79972960 /* NetworkConfig.swift in Sources */,
@@ -501,8 +513,8 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.vimo-ai.VhisperNative";
-				PRODUCT_NAME = Vhisper;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vimo-ai.VhisperNative.dev";
+				PRODUCT_NAME = Vhisper_Dev;
 				SDKROOT = macosx;
 			};
 			name = Debug;

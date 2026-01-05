@@ -36,6 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var statusMenu: NSMenu?
     private var settingsOpenerWindow: NSWindow?
+    private var languageObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide Dock icon - menu bar only app
@@ -67,8 +68,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Load configuration
         VhisperManager.shared.loadConfiguration()
 
+        // Sync language with config
+        LocalizationManager.shared.setLanguage(VhisperManager.shared.config.general.language)
+
         // Setup periodic permission check (every 2 seconds for first 30 seconds)
         setupPermissionPolling()
+
+        // Listen for language changes to update menu
+        languageObserver = NotificationCenter.default.addObserver(
+            forName: LocalizationManager.languageDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.setupMenu()
+            self?.statusItem?.menu = self?.statusMenu
+        }
     }
 
     private func setupPermissionPolling() {
@@ -143,13 +157,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupMenu() {
         statusMenu = NSMenu()
 
-        let settingsItem = NSMenuItem(title: "设置...", action: #selector(openSettings), keyEquivalent: ",")
+        let settingsTitle = LocalizationManager.shared.localizedString("menu.settings")
+        let settingsItem = NSMenuItem(title: settingsTitle, action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
         statusMenu?.addItem(settingsItem)
 
         statusMenu?.addItem(NSMenuItem.separator())
 
-        let quitItem = NSMenuItem(title: "退出", action: #selector(quitApp), keyEquivalent: "q")
+        let quitTitle = LocalizationManager.shared.localizedString("menu.quit")
+        let quitItem = NSMenuItem(title: quitTitle, action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         statusMenu?.addItem(quitItem)
     }
