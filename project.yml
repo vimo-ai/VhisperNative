@@ -6,6 +6,8 @@ options:
   xcodeVersion: "15.0"
   generateEmptyDirectories: true
   groupSortPosition: top
+  developmentLanguage: en
+  localizedResources: true
 
 settings:
   SWIFT_VERSION: "5.9"
@@ -37,3 +39,6 @@ targets:
       path: VhisperNative/Resources/VhisperNative.entitlements
     info:
       path: VhisperNative/Resources/Info.plist
+      properties:
+        LSUIElement: true
+        NSMicrophoneUsageDescription: "Vhisper needs microphone access to record your voice for speech-to-text conversion."

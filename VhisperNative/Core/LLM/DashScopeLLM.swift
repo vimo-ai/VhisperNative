@@ -11,12 +11,14 @@ import Foundation
 final class DashScopeLLM: LLMService, @unchecked Sendable {
     private let apiKey: String
     private let model: String
+    private let prompt: String
 
     private let apiURL = URL(string: "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation")!
 
-    init(apiKey: String, model: String = "qwen-plus") {
+    init(apiKey: String, model: String = "qwen-plus", prompt: String = LLMPrompt.defaultRefinePrompt) {
         self.apiKey = apiKey
         self.model = model
+        self.prompt = prompt
     }
 
     func refineText(_ text: String) async throws -> String {
@@ -32,7 +34,7 @@ final class DashScopeLLM: LLMService, @unchecked Sendable {
             model: model,
             input: DashScopeInput(
                 messages: [
-                    DashScopeMessage(role: "system", content: LLMPrompt.refinePrompt),
+                    DashScopeMessage(role: "system", content: prompt),
                     DashScopeMessage(role: "user", content: text)
                 ]
             ),
@@ -45,7 +47,7 @@ final class DashScopeLLM: LLMService, @unchecked Sendable {
 
         request.httpBody = try JSONEncoder().encode(requestBody)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await NetworkConfig.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw LLMError.network("Invalid response")

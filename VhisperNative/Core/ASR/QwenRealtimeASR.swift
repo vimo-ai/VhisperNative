@@ -11,14 +11,16 @@ import Foundation
 final class QwenRealtimeASR: StreamingASRService, @unchecked Sendable {
     private let apiKey: String
     private let model: String
+    private let vadConfig: VADConfig
 
     private let wsBaseURL = "wss://dashscope.aliyuncs.com/api-ws/v1/realtime"
     private let connectTimeout: TimeInterval = 10
     private let sessionConfirmTimeout: TimeInterval = 5
 
-    init(apiKey: String, model: String = "qwen3-asr-flash-realtime") {
+    init(apiKey: String, model: String = "qwen3-asr-flash-realtime", vadConfig: VADConfig = .default) {
         self.apiKey = apiKey
         self.model = model
+        self.vadConfig = vadConfig
     }
 
     // MARK: - StreamingASRService
@@ -36,9 +38,8 @@ final class QwenRealtimeASR: StreamingASRService, @unchecked Sendable {
         request.setValue("realtime=v1", forHTTPHeaderField: "OpenAI-Beta")
         request.timeoutInterval = connectTimeout
 
-        // Create WebSocket task
-        let session = URLSession(configuration: .default)
-        let webSocket = session.webSocketTask(with: request)
+        // Create WebSocket task using shared configuration
+        let webSocket = NetworkConfig.webSocketTask(with: request)
         webSocket.resume()
 
         // Send session.update
@@ -52,14 +53,17 @@ final class QwenRealtimeASR: StreamingASRService, @unchecked Sendable {
                 inputAudioTranscription: TranscriptionConfig(language: "zh"),
                 turnDetection: TurnDetection(
                     type: "server_vad",
-                    threshold: 0.5,
-                    silenceDurationMs: 500
+                    threshold: vadConfig.threshold,
+                    silenceDurationMs: UInt32(vadConfig.silenceDurationMs)
                 )
             )
         )
 
         let sessionJSON = try JSONEncoder().encode(sessionUpdate)
-        try await webSocket.send(.string(String(data: sessionJSON, encoding: .utf8)!))
+        guard let sessionJSONString = String(data: sessionJSON, encoding: .utf8) else {
+            throw ASRError.api("Failed to encode session update")
+        }
+        try await webSocket.send(.string(sessionJSONString))
 
         // Wait for session confirmation
         try await waitForSessionConfirm(webSocket: webSocket)
@@ -67,10 +71,9 @@ final class QwenRealtimeASR: StreamingASRService, @unchecked Sendable {
         // Create event stream
         let (eventStream, eventContinuation) = AsyncStream<StreamingASREvent>.makeStream()
 
-        // Create control handler
-        let controlHandler: @Sendable (StreamingControl) async -> Void = { [weak webSocket] control in
-            guard let ws = webSocket else { return }
-
+        // Create control handler - capture webSocket strongly to keep connection alive
+        // The connection will be released when cancel is called
+        let controlHandler: @Sendable (StreamingControl) async -> Void = { control in
             do {
                 switch control {
                 case .audio(let data):
@@ -80,7 +83,11 @@ final class QwenRealtimeASR: StreamingASRService, @unchecked Sendable {
                         audio: data.base64EncodedString()
                     )
                     let json = try JSONEncoder().encode(audioAppend)
-                    try await ws.send(.string(String(data: json, encoding: .utf8)!))
+                    guard let jsonString = String(data: json, encoding: .utf8) else {
+                        print("[QwenASR] Failed to encode audio append to string")
+                        return
+                    }
+                    try await webSocket.send(.string(jsonString))
 
                 case .commit:
                     let commit = AudioCommitEvent(
@@ -88,12 +95,17 @@ final class QwenRealtimeASR: StreamingASRService, @unchecked Sendable {
                         type: "input_audio_buffer.commit"
                     )
                     let json = try JSONEncoder().encode(commit)
-                    try await ws.send(.string(String(data: json, encoding: .utf8)!))
+                    guard let jsonString = String(data: json, encoding: .utf8) else {
+                        print("[QwenASR] Failed to encode commit to string")
+                        return
+                    }
+                    try await webSocket.send(.string(jsonString))
 
                 case .cancel:
-                    ws.cancel(with: .normalClosure, reason: nil)
+                    webSocket.cancel(with: .normalClosure, reason: nil)
                 }
             } catch {
+                print("[QwenASR] Control error: \(error)")
                 eventContinuation.yield(.error(error.localizedDescription))
             }
         }

@@ -24,8 +24,8 @@ final class FunASR: StreamingASRService, @unchecked Sendable {
         }
 
         // FunASR may use self-signed certificates for local deployment
-        let config = URLSessionConfiguration.default
-        let session = URLSession(configuration: config, delegate: SelfSignedCertDelegate(), delegateQueue: nil)
+        // Use proxy-free configuration to avoid network issues
+        let session = URLSession(configuration: NetworkConfig.sessionConfiguration, delegate: SelfSignedCertDelegate(), delegateQueue: nil)
         let webSocket = session.webSocketTask(with: url)
         webSocket.resume()
 
@@ -40,26 +40,40 @@ final class FunASR: StreamingASRService, @unchecked Sendable {
         )
 
         let startJSON = try JSONEncoder().encode(startMessage)
-        try await webSocket.send(.string(String(data: startJSON, encoding: .utf8)!))
+        guard let startJSONString = String(data: startJSON, encoding: .utf8) else {
+            throw ASRError.api("Failed to encode start message")
+        }
+        try await webSocket.send(.string(startJSONString))
 
         let (eventStream, eventContinuation) = AsyncStream<StreamingASREvent>.makeStream()
 
-        let controlHandler: @Sendable (StreamingControl) async -> Void = { [weak webSocket] control in
-            guard let ws = webSocket else { return }
-
+        // Capture webSocket strongly to keep connection alive
+        let controlHandler: @Sendable (StreamingControl) async -> Void = { control in
             switch control {
             case .audio(let data):
-                try? await ws.send(.data(data))
+                do {
+                    try await webSocket.send(.data(data))
+                } catch {
+                    print("[FunASR] Failed to send audio: \(error)")
+                    eventContinuation.yield(.error(error.localizedDescription))
+                }
 
             case .commit:
                 // Send end message
                 let endMessage = FunASREndMessage(isSpeaking: false)
-                if let json = try? JSONEncoder().encode(endMessage) {
-                    try? await ws.send(.string(String(data: json, encoding: .utf8)!))
+                do {
+                    let json = try JSONEncoder().encode(endMessage)
+                    guard let jsonString = String(data: json, encoding: .utf8) else {
+                        print("[FunASR] Failed to encode end message to string")
+                        return
+                    }
+                    try await webSocket.send(.string(jsonString))
+                } catch {
+                    print("[FunASR] Failed to send end message: \(error)")
                 }
 
             case .cancel:
-                ws.cancel(with: .normalClosure, reason: nil)
+                webSocket.cancel(with: .normalClosure, reason: nil)
             }
         }
 

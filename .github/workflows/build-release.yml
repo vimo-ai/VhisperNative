@@ -1,0 +1,101 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: false
+        type: string
+
+env:
+  XCODE_VERSION: '15.4'
+  SCHEME: 'VhisperNative'
+  PRODUCT_NAME: 'Vhisper'
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: xcodegen generate
+
+      - name: Build Application
+        run: |
+          xcodebuild -project VhisperNative.xcodeproj \
+            -scheme ${{ env.SCHEME }} \
+            -configuration Release \
+            -derivedDataPath build \
+            -archivePath build/${{ env.PRODUCT_NAME }}.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export Application
+        run: |
+          mkdir -p dist
+          cp -R "build/${{ env.PRODUCT_NAME }}.xcarchive/Products/Applications/${{ env.PRODUCT_NAME }}.app" dist/
+
+      - name: Create DMG
+        run: |
+          # Create a temporary directory for DMG contents
+          mkdir -p dmg_contents
+          cp -R "dist/${{ env.PRODUCT_NAME }}.app" dmg_contents/
+          ln -s /Applications dmg_contents/Applications
+
+          # Create DMG
+          hdiutil create -volname "${{ env.PRODUCT_NAME }}" \
+            -srcfolder dmg_contents \
+            -ov -format UDZO \
+            "dist/${{ env.PRODUCT_NAME }}.dmg"
+
+      - name: Create ZIP
+        run: |
+          cd dist
+          zip -r "${{ env.PRODUCT_NAME }}.zip" "${{ env.PRODUCT_NAME }}.app"
+
+      - name: Get Version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "version=dev-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PRODUCT_NAME }}-${{ steps.version.outputs.version }}
+          path: |
+            dist/${{ env.PRODUCT_NAME }}.dmg
+            dist/${{ env.PRODUCT_NAME }}.zip
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/${{ env.PRODUCT_NAME }}.dmg
+            dist/${{ env.PRODUCT_NAME }}.zip
+          draft: false
+          prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

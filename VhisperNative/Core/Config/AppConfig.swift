@@ -15,13 +15,15 @@ struct AppConfig: Codable {
     var asr: ASRConfig
     var llm: LLMConfig
     var output: OutputConfig
+    var vocabulary: VocabularyConfig
 
     static var `default`: AppConfig {
         AppConfig(
             hotkey: .default,
             asr: .default,
             llm: .default,
-            output: .default
+            output: .default,
+            vocabulary: .default
         )
     }
 }
@@ -75,6 +77,7 @@ enum ASRProvider: String, Codable, CaseIterable, Identifiable {
 
 struct ASRConfig: Codable {
     var provider: ASRProvider
+    var vad: VADConfig
     var qwen: QwenASRConfig?
     var dashscope: DashScopeASRConfig?
     var openai: OpenAIASRConfig?
@@ -83,12 +86,54 @@ struct ASRConfig: Codable {
     static var `default`: ASRConfig {
         ASRConfig(
             provider: .qwen,
+            vad: .default,
             qwen: QwenASRConfig(),
             dashscope: nil,
             openai: nil,
             funasr: nil
         )
     }
+
+    // Custom decoder to handle missing vad field in old configs
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        provider = try container.decode(ASRProvider.self, forKey: .provider)
+        vad = try container.decodeIfPresent(VADConfig.self, forKey: .vad) ?? .default
+        qwen = try container.decodeIfPresent(QwenASRConfig.self, forKey: .qwen)
+        dashscope = try container.decodeIfPresent(DashScopeASRConfig.self, forKey: .dashscope)
+        openai = try container.decodeIfPresent(OpenAIASRConfig.self, forKey: .openai)
+        funasr = try container.decodeIfPresent(FunASRConfig.self, forKey: .funasr)
+    }
+
+    init(provider: ASRProvider, vad: VADConfig, qwen: QwenASRConfig?, dashscope: DashScopeASRConfig?, openai: OpenAIASRConfig?, funasr: FunASRConfig?) {
+        self.provider = provider
+        self.vad = vad
+        self.qwen = qwen
+        self.dashscope = dashscope
+        self.openai = openai
+        self.funasr = funasr
+    }
+}
+
+/// VAD (Voice Activity Detection) configuration
+struct VADConfig: Codable {
+    var silenceDurationMs: Int  // Silence duration to trigger end of speech (ms)
+    var threshold: Float        // VAD sensitivity threshold (0.0 - 1.0)
+
+    static var `default`: VADConfig {
+        VADConfig(
+            silenceDurationMs: 300,
+            threshold: 0.5
+        )
+    }
+
+    /// Predefined presets
+    static let presets: [(name: String, config: VADConfig)] = [
+        ("快速响应", VADConfig(silenceDurationMs: 200, threshold: 0.5)),
+        ("默认", VADConfig(silenceDurationMs: 300, threshold: 0.5)),
+        ("稳定", VADConfig(silenceDurationMs: 500, threshold: 0.5)),
+        ("长句", VADConfig(silenceDurationMs: 800, threshold: 0.4))
+    ]
 }
 
 struct QwenASRConfig: Codable {
@@ -140,6 +185,7 @@ enum LLMProvider: String, Codable, CaseIterable, Identifiable {
 struct LLMConfig: Codable {
     var enabled: Bool
     var provider: LLMProvider
+    var customPrompt: String?  // nil = use default prompt
     var dashscope: DashScopeLLMConfig?
     var openai: OpenAILLMConfig?
     var ollama: OllamaLLMConfig?
@@ -148,6 +194,7 @@ struct LLMConfig: Codable {
         LLMConfig(
             enabled: false,
             provider: .dashscope,
+            customPrompt: nil,
             dashscope: DashScopeLLMConfig(),
             openai: nil,
             ollama: nil
@@ -185,5 +232,82 @@ struct OutputConfig: Codable {
             restoreClipboard: true,
             pasteDelayMs: 50
         )
+    }
+}
+
+// MARK: - Vocabulary Configuration
+
+/// A vocabulary entry mapping multiple error spellings to one correct word
+struct VocabularyEntry: Codable, Identifiable {
+    var id: UUID
+    var correctWord: String      // The correct word to output
+    var errorVariants: [String]  // Possible misspellings/alternate transcriptions
+
+    init(id: UUID = UUID(), correctWord: String, errorVariants: [String]) {
+        self.id = id
+        self.correctWord = correctWord
+        self.errorVariants = errorVariants
+    }
+}
+
+/// A category of vocabulary entries
+struct VocabularyCategory: Codable, Identifiable {
+    var id: UUID
+    var name: String             // Category name (e.g., "Brand Names", "Person Names")
+    var entries: [VocabularyEntry]
+    var enabled: Bool
+
+    init(id: UUID = UUID(), name: String, entries: [VocabularyEntry] = [], enabled: Bool = true) {
+        self.id = id
+        self.name = name
+        self.entries = entries
+        self.enabled = enabled
+    }
+}
+
+/// Vocabulary configuration
+struct VocabularyConfig: Codable {
+    var enabled: Bool
+    var enablePostASRReplacement: Bool  // Direct text replacement after ASR
+    var enableLLMInjection: Bool        // Add vocabulary context to LLM prompt
+    var categories: [VocabularyCategory]
+
+    static var `default`: VocabularyConfig {
+        VocabularyConfig(
+            enabled: false,
+            enablePostASRReplacement: true,
+            enableLLMInjection: true,
+            categories: []
+        )
+    }
+
+    /// Get all enabled vocabulary entries as a flat dictionary for replacement
+    var replacementDictionary: [String: String] {
+        var dict: [String: String] = [:]
+        for category in categories where category.enabled {
+            for entry in category.entries {
+                for variant in entry.errorVariants {
+                    dict[variant.lowercased()] = entry.correctWord
+                }
+            }
+        }
+        return dict
+    }
+
+    /// Generate vocabulary context string for LLM prompt injection
+    var llmContextString: String? {
+        guard enabled && enableLLMInjection else { return nil }
+
+        var lines: [String] = []
+        for category in categories where category.enabled {
+            for entry in category.entries {
+                let variants = entry.errorVariants.joined(separator: ", ")
+                lines.append("- \"\(variants)\" should be written as \"\(entry.correctWord)\"")
+            }
+        }
+
+        guard !lines.isEmpty else { return nil }
+
+        return "Important vocabulary corrections:\n" + lines.joined(separator: "\n")
     }
 }

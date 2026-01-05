@@ -13,6 +13,7 @@ import Carbon.HIToolbox
 enum SettingsTab: String, CaseIterable, Identifiable {
     case asr = "语音识别"
     case llm = "文本优化"
+    case vocabulary = "词库"
     case hotkey = "快捷键"
     case permissions = "权限"
 
@@ -22,6 +23,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .asr: return "mic.fill"
         case .llm: return "sparkles"
+        case .vocabulary: return "book.fill"
         case .hotkey: return "keyboard"
         case .permissions: return "lock.shield"
         }
@@ -67,6 +69,11 @@ struct SettingsView: View {
         .frame(width: 600, height: 480)
         .onAppear {
             permissionManager.checkAllPermissions()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            // Auto-refresh permissions when app becomes active
+            permissionManager.forceRefreshMicrophonePermission()
+            permissionManager.forceRefreshAccessibilityPermission()
         }
     }
 
@@ -161,6 +168,9 @@ struct SettingsView: View {
         case .llm:
             LLMSettingsContent()
                 .environmentObject(manager)
+        case .vocabulary:
+            VocabularySettingsContent()
+                .environmentObject(manager)
         case .hotkey:
             HotkeySettingsContent()
                 .environmentObject(hotkeyManager)
@@ -226,6 +236,11 @@ struct ASRSettingsContent: View {
 
             // Provider-specific settings
             providerSettings
+
+            // VAD settings (only show for streaming providers)
+            if manager.config.asr.provider == .qwen || manager.config.asr.provider == .dashscope {
+                vadSettingsSection
+            }
 
             // Test button
             HStack(spacing: 12) {
@@ -421,6 +436,98 @@ struct ASRSettingsContent: View {
         }
     }
 
+    // MARK: - VAD Settings Section
+
+    @ViewBuilder
+    private var vadSettingsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Divider()
+                .padding(.vertical, 4)
+
+            Text("VAD 语音活动检测")
+                .font(.system(size: 13, weight: .medium))
+
+            // Presets
+            VStack(alignment: .leading, spacing: 8) {
+                Text("预设")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+
+                HStack(spacing: 8) {
+                    ForEach(VADConfig.presets, id: \.name) { preset in
+                        Button(preset.name) {
+                            manager.config.asr.vad = preset.config
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .tint(isVADPresetSelected(preset.config) ? .accentColor : nil)
+                    }
+                }
+
+                Text("快速响应适合短句，长句模式适合长段落朗读")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+
+            // Custom settings
+            VStack(alignment: .leading, spacing: 8) {
+                // Silence duration slider
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("静默阈值")
+                            .font(.system(size: 12))
+                        Spacer()
+                        Text("\(manager.config.asr.vad.silenceDurationMs) ms")
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Slider(
+                        value: Binding(
+                            get: { Double(manager.config.asr.vad.silenceDurationMs) },
+                            set: { manager.config.asr.vad.silenceDurationMs = Int($0) }
+                        ),
+                        in: 100...1500,
+                        step: 50
+                    )
+                    .frame(maxWidth: 300)
+
+                    Text("检测到多长时间的静默后结束语音识别。值越小响应越快，但可能打断句子。")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+
+                // Threshold slider
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("灵敏度阈值")
+                            .font(.system(size: 12))
+                        Spacer()
+                        Text(String(format: "%.2f", manager.config.asr.vad.threshold))
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Slider(
+                        value: $manager.config.asr.vad.threshold,
+                        in: 0.1...0.9,
+                        step: 0.05
+                    )
+                    .frame(maxWidth: 300)
+
+                    Text("语音活动检测灵敏度。值越低越灵敏，可能误触发；值越高越不敏感。")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+    }
+
+    private func isVADPresetSelected(_ config: VADConfig) -> Bool {
+        manager.config.asr.vad.silenceDurationMs == config.silenceDurationMs &&
+        manager.config.asr.vad.threshold == config.threshold
+    }
+
     private var isConfigValid: Bool {
         switch manager.config.asr.provider {
         case .qwen:
@@ -518,7 +625,60 @@ struct LLMSettingsContent: View {
                         }
                     }
                 }
+
+                Divider()
+                    .padding(.vertical, 4)
+
+                // Custom prompt section
+                customPromptSection
             }
+        }
+    }
+
+    // MARK: - Custom Prompt Section
+
+    @ViewBuilder
+    private var customPromptSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("自定义 Prompt")
+                    .font(.system(size: 13, weight: .medium))
+
+                Spacer()
+
+                if manager.config.llm.customPrompt != nil {
+                    Button("重置为默认") {
+                        manager.config.llm.customPrompt = nil
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+
+            TextEditor(text: Binding(
+                get: { manager.config.llm.customPrompt ?? LLMPrompt.defaultRefinePrompt },
+                set: { newValue in
+                    // Only set customPrompt if different from default
+                    if newValue == LLMPrompt.defaultRefinePrompt {
+                        manager.config.llm.customPrompt = nil
+                    } else {
+                        manager.config.llm.customPrompt = newValue
+                    }
+                }
+            ))
+            .font(.system(size: 12, design: .monospaced))
+            .frame(minHeight: 120, maxHeight: 160)
+            .padding(8)
+            .background(Color(NSColor.textBackgroundColor))
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+            )
+
+            Text("自定义发送给 LLM 的系统 Prompt，用于文本优化。")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
         }
     }
 
@@ -934,8 +1094,10 @@ struct PermissionsSettingsContent: View {
 
     private func refreshPermissions() {
         isRefreshing = true
-        permissionManager.checkAllPermissions()
+        permissionManager.forceRefreshMicrophonePermission()
+        permissionManager.forceRefreshAccessibilityPermission()
 
+        // Give time for async refresh to complete
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             isRefreshing = false
         }
@@ -971,5 +1133,263 @@ struct SettingsTextField: View {
                     .foregroundColor(.secondary)
             }
         }
+    }
+}
+
+// MARK: - Vocabulary Settings Content
+
+struct VocabularySettingsContent: View {
+    @EnvironmentObject var manager: VhisperManager
+    @State private var isAddingCategory = false
+    @State private var newCategoryName = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("词库设置")
+                .font(.system(size: 18, weight: .semibold))
+
+            // Enable toggle
+            Toggle("启用词库功能", isOn: $manager.config.vocabulary.enabled)
+                .font(.system(size: 14))
+
+            Text("定义自定义词库以提高专业术语的识别准确度。")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+
+            if manager.config.vocabulary.enabled {
+                Divider()
+                    .padding(.vertical, 4)
+
+                // Processing options
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Post-ASR 文本替换", isOn: $manager.config.vocabulary.enablePostASRReplacement)
+                        .font(.system(size: 13))
+                    Text("在语音识别后直接进行文本替换")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+
+                    Toggle("LLM 上下文注入", isOn: $manager.config.vocabulary.enableLLMInjection)
+                        .font(.system(size: 13))
+                    Text("将词库信息注入到 LLM Prompt 中进行智能修正")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+
+                Divider()
+                    .padding(.vertical, 4)
+
+                // Categories section
+                categoriesSection
+            }
+        }
+    }
+
+    // MARK: - Categories Section
+
+    @ViewBuilder
+    private var categoriesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("词库分类")
+                    .font(.system(size: 14, weight: .medium))
+
+                Spacer()
+
+                Button(action: { isAddingCategory = true }) {
+                    Label("添加分类", systemImage: "plus")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+
+            if manager.config.vocabulary.categories.isEmpty {
+                Text("暂无分类。添加分类后可以开始定义词库。")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .padding(.vertical, 8)
+            } else {
+                ForEach($manager.config.vocabulary.categories) { $category in
+                    VocabularyCategoryRow(category: $category, onDelete: {
+                        manager.config.vocabulary.categories.removeAll { $0.id == category.id }
+                    })
+                }
+            }
+
+            // Add category form
+            if isAddingCategory {
+                addCategoryView
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var addCategoryView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("新分类")
+                .font(.system(size: 13, weight: .medium))
+
+            HStack {
+                TextField("分类名称 (如: 品牌名、人名)", text: $newCategoryName)
+                    .textFieldStyle(.roundedBorder)
+
+                Button("添加") {
+                    guard !newCategoryName.isEmpty else { return }
+                    let category = VocabularyCategory(name: newCategoryName)
+                    manager.config.vocabulary.categories.append(category)
+                    newCategoryName = ""
+                    isAddingCategory = false
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(newCategoryName.isEmpty)
+
+                Button("取消") {
+                    newCategoryName = ""
+                    isAddingCategory = false
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(12)
+        .background(Color.secondary.opacity(0.1))
+        .cornerRadius(8)
+    }
+}
+
+// MARK: - Vocabulary Category Row
+
+struct VocabularyCategoryRow: View {
+    @Binding var category: VocabularyCategory
+    let onDelete: () -> Void
+
+    @State private var isExpanded = false
+    @State private var isAddingEntry = false
+    @State private var newCorrectWord = ""
+    @State private var newVariants = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Header
+            HStack {
+                Toggle("", isOn: $category.enabled)
+                    .labelsHidden()
+                    .scaleEffect(0.8)
+
+                Button(action: { isExpanded.toggle() }) {
+                    HStack {
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 10))
+                        Text(category.name)
+                            .font(.system(size: 13, weight: .medium))
+                        Text("(\(category.entries.count))")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                if isExpanded {
+                    Button(action: { isAddingEntry = true }) {
+                        Image(systemName: "plus.circle")
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Entries (when expanded)
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach($category.entries) { $entry in
+                        VocabularyEntryRow(entry: $entry, onDelete: {
+                            category.entries.removeAll { $0.id == entry.id }
+                        })
+                    }
+
+                    if isAddingEntry {
+                        addEntryView
+                    }
+                }
+                .padding(.leading, 24)
+            }
+        }
+        .padding(12)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(8)
+    }
+
+    @ViewBuilder
+    private var addEntryView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            TextField("正确词汇 (如: Vimo)", text: $newCorrectWord)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 12))
+
+            TextField("可能的错误写法，用逗号分隔 (如: weimo, wei mo)", text: $newVariants)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 12))
+
+            HStack {
+                Button("添加") {
+                    guard !newCorrectWord.isEmpty, !newVariants.isEmpty else { return }
+                    let variants = newVariants.split(separator: ",").map {
+                        String($0).trimmingCharacters(in: .whitespaces)
+                    }
+                    let entry = VocabularyEntry(correctWord: newCorrectWord, errorVariants: variants)
+                    category.entries.append(entry)
+                    newCorrectWord = ""
+                    newVariants = ""
+                    isAddingEntry = false
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(newCorrectWord.isEmpty || newVariants.isEmpty)
+
+                Button("取消") {
+                    newCorrectWord = ""
+                    newVariants = ""
+                    isAddingEntry = false
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        .padding(8)
+        .background(Color.accentColor.opacity(0.1))
+        .cornerRadius(6)
+    }
+}
+
+// MARK: - Vocabulary Entry Row
+
+struct VocabularyEntryRow: View {
+    @Binding var entry: VocabularyEntry
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.correctWord)
+                    .font(.system(size: 12, weight: .medium))
+                Text(entry.errorVariants.joined(separator: ", "))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Button(action: onDelete) {
+                Image(systemName: "xmark.circle")
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 4)
     }
 }

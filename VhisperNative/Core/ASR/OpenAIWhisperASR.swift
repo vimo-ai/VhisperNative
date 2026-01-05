@@ -62,8 +62,8 @@ final class OpenAIWhisperASR: ASRService, @unchecked Sendable {
 
         request.httpBody = body
 
-        // Send request
-        let (data, response) = try await URLSession.shared.data(for: request)
+        // Send request using proxy-free configuration
+        let (data, response) = try await NetworkConfig.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ASRError.network("Invalid response")

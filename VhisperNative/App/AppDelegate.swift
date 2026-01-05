@@ -7,24 +7,25 @@
 
 import SwiftUI
 import AVFoundation
+import ApplicationServices
 
-// MARK: - Settings Opener Helper
+// MARK: - Settings Window Helper
 
 @MainActor
 class SettingsOpener: ObservableObject {
     static let shared = SettingsOpener()
-    var openSettingsAction: (() -> Void)?
+    var openWindowAction: ((String) -> Void)?
 }
 
 struct SettingsOpenerView: View {
-    @Environment(\.openSettings) private var openSettings
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Color.clear
             .frame(width: 0, height: 0)
             .onAppear {
-                SettingsOpener.shared.openSettingsAction = {
-                    openSettings()
+                SettingsOpener.shared.openWindowAction = { windowId in
+                    openWindow(id: windowId)
                 }
             }
     }
@@ -46,14 +47,53 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup settings opener helper
         setupSettingsOpener()
 
-        // Request microphone permission
-        requestMicrophonePermission()
+        // Check accessibility permission first
+        let hasAccessibility = AXIsProcessTrusted()
+        print("[AppDelegate] Initial accessibility check: \(hasAccessibility)")
 
-        // Initialize hotkey manager
-        HotkeyManager.shared.register()
+        // Update permission status (this will also trigger hotkey registration if granted)
+        PermissionManager.shared.checkAllPermissions()
+
+        // If accessibility already granted, register hotkey immediately
+        if hasAccessibility {
+            print("[AppDelegate] Accessibility granted, registering hotkey")
+            HotkeyManager.shared.register()
+        } else {
+            print("[AppDelegate] Accessibility not granted, showing alert")
+            // Show permission alert
+            showAccessibilityPermissionAlert()
+        }
 
         // Load configuration
         VhisperManager.shared.loadConfiguration()
+
+        // Setup periodic permission check (every 2 seconds for first 30 seconds)
+        setupPermissionPolling()
+    }
+
+    private func setupPermissionPolling() {
+        // Poll for permission changes after user grants access
+        var pollCount = 0
+        Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] timer in
+            pollCount += 1
+            if pollCount > 15 { // Stop after 30 seconds
+                timer.invalidate()
+                return
+            }
+
+            let isTrusted = AXIsProcessTrusted()
+            if isTrusted && PermissionManager.shared.accessibilityStatus != .granted {
+                print("[AppDelegate] Permission polling: accessibility granted!")
+                PermissionManager.shared.forceRefreshAccessibilityPermission()
+                timer.invalidate()
+            }
+        }
+    }
+
+    private func showAccessibilityPermissionAlert() {
+        // Trigger system prompt to add app to accessibility list
+        // This will show the system dialog and add the app to the list
+        PermissionManager.shared.requestAccessibilityPermission()
     }
 
     private func setupSettingsOpener() {
@@ -116,25 +156,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() {
         NSApp.activate(ignoringOtherApps: true)
-        // Use the SwiftUI openSettings action
-        if let action = SettingsOpener.shared.openSettingsAction {
-            action()
+        // Use the SwiftUI openWindow action
+        if let action = SettingsOpener.shared.openWindowAction {
+            action("settings")
+        }
+
+        // Find and configure settings window to not hide on deactivate
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            for window in NSApp.windows {
+                if window.title == "Vhisper Settings" {
+                    window.hidesOnDeactivate = false
+                    window.level = .normal
+                    break
+                }
+            }
         }
     }
 
     @objc private func quitApp() {
         NSApp.terminate(nil)
-    }
-
-    private func requestMicrophonePermission() {
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .audio) { _ in }
-        case .denied, .restricted, .authorized:
-            break
-        @unknown default:
-            break
-        }
     }
 
     func updateStatusIcon(isRecording: Bool) {
@@ -146,5 +186,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             button.contentTintColor = isRecording ? .systemRed : nil
         }
+    }
+
+    // Prevent app from quitting when last window is closed (menu bar app)
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return false
     }
 }

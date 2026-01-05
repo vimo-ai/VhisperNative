@@ -29,8 +29,7 @@ final class DashScopeASR: StreamingASRService, @unchecked Sendable {
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 10
 
-        let session = URLSession(configuration: .default)
-        let webSocket = session.webSocketTask(with: request)
+        let webSocket = NetworkConfig.webSocketTask(with: request)
         webSocket.resume()
 
         // Send start transcription command
@@ -53,16 +52,23 @@ final class DashScopeASR: StreamingASRService, @unchecked Sendable {
         )
 
         let startJSON = try JSONEncoder().encode(startCommand)
-        try await webSocket.send(.string(String(data: startJSON, encoding: .utf8)!))
+        guard let startJSONString = String(data: startJSON, encoding: .utf8) else {
+            throw ASRError.api("Failed to encode start command")
+        }
+        try await webSocket.send(.string(startJSONString))
 
         let (eventStream, eventContinuation) = AsyncStream<StreamingASREvent>.makeStream()
 
-        let controlHandler: @Sendable (StreamingControl) async -> Void = { [weak webSocket] control in
-            guard let ws = webSocket else { return }
-
+        // Capture webSocket strongly to keep connection alive
+        let controlHandler: @Sendable (StreamingControl) async -> Void = { control in
             switch control {
             case .audio(let data):
-                try? await ws.send(.data(data))
+                do {
+                    try await webSocket.send(.data(data))
+                } catch {
+                    print("[DashScopeASR] Failed to send audio: \(error)")
+                    eventContinuation.yield(.error(error.localizedDescription))
+                }
 
             case .commit:
                 let finish = FinishCommand(
@@ -72,12 +78,19 @@ final class DashScopeASR: StreamingASRService, @unchecked Sendable {
                         streaming: "duplex"
                     )
                 )
-                if let json = try? JSONEncoder().encode(finish) {
-                    try? await ws.send(.string(String(data: json, encoding: .utf8)!))
+                do {
+                    let json = try JSONEncoder().encode(finish)
+                    guard let jsonString = String(data: json, encoding: .utf8) else {
+                        print("[DashScopeASR] Failed to encode finish command to string")
+                        return
+                    }
+                    try await webSocket.send(.string(jsonString))
+                } catch {
+                    print("[DashScopeASR] Failed to send finish: \(error)")
                 }
 
             case .cancel:
-                ws.cancel(with: .normalClosure, reason: nil)
+                webSocket.cancel(with: .normalClosure, reason: nil)
             }
         }
 

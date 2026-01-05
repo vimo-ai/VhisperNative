@@ -26,6 +26,7 @@ class VhisperManager: ObservableObject {
 
     private var pipeline: VoicePipeline?
     private var streamingText: String = ""
+    private var processingTimeoutTask: Task<Void, Never>?
 
     enum VhisperState {
         case idle
@@ -98,7 +99,13 @@ class VhisperManager: ObservableObject {
 
     func startRecording() {
         guard pipeline != nil else {
-            errorMessage = "Please configure API Key first"
+            errorMessage = NSLocalizedString("error.no_api_key", comment: "No API key configured")
+            return
+        }
+
+        // Check microphone permission before starting
+        guard PermissionManager.shared.microphoneStatus == .granted else {
+            errorMessage = NSLocalizedString("error.microphone_denied", comment: "Microphone permission denied")
             return
         }
 
@@ -147,10 +154,15 @@ class VhisperManager: ObservableObject {
             }
         }
 
+        // Cancel any existing timeout task
+        processingTimeoutTask?.cancel()
+
         // Timeout protection: force cleanup after 3 seconds
-        Task {
+        processingTimeoutTask = Task {
             try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled else { return }
             if self.state == .processing {
+                print("[Vhisper] Processing timeout, forcing cleanup")
                 self.forceCleanup()
             }
         }
@@ -175,6 +187,8 @@ class VhisperManager: ObservableObject {
     }
 
     private func forceCleanup() {
+        processingTimeoutTask?.cancel()
+        processingTimeoutTask = nil
         state = .idle
         updateAppDelegateIcon(recording: false)
         WaveformOverlayController.shared.hide()
@@ -197,10 +211,10 @@ class VhisperManager: ObservableObject {
 
         case .finalResult(let text):
             lastResult = text
-            errorMessage = nil
 
-            // Output text
+            // Output text or show warning for empty result
             if !text.isEmpty {
+                errorMessage = nil
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     TextOutputService.shared.outputText(
                         text,
@@ -208,6 +222,9 @@ class VhisperManager: ObservableObject {
                         pasteDelay: self.config.output.pasteDelayMs
                     )
                 }
+            } else {
+                // Show user-friendly message for empty transcription
+                errorMessage = NSLocalizedString("error.empty_transcription", comment: "Recording too short or no speech detected")
             }
 
             // Clear waveform text

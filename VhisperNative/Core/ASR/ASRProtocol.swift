@@ -70,7 +70,7 @@ enum ASRFactory {
                 print("[ASRFactory] Qwen ASR not configured - missing API key")
                 return nil
             }
-            return QwenRealtimeASR(apiKey: qwenConfig.apiKey, model: qwenConfig.model)
+            return QwenRealtimeASR(apiKey: qwenConfig.apiKey, model: qwenConfig.model, vadConfig: config.vad)
 
         case .dashscope:
             guard let dsConfig = config.dashscope, !dsConfig.apiKey.isEmpty else {

@@ -11,10 +11,12 @@ import Foundation
 final class OllamaLLM: LLMService, @unchecked Sendable {
     private let endpoint: String
     private let model: String
+    private let prompt: String
 
-    init(endpoint: String = "http://localhost:11434", model: String = "qwen3:8b") {
+    init(endpoint: String = "http://localhost:11434", model: String = "qwen3:8b", prompt: String = LLMPrompt.defaultRefinePrompt) {
         self.endpoint = endpoint
         self.model = model
+        self.prompt = prompt
     }
 
     func refineText(_ text: String) async throws -> String {
@@ -32,7 +34,7 @@ final class OllamaLLM: LLMService, @unchecked Sendable {
         let requestBody = OllamaRequest(
             model: model,
             messages: [
-                OllamaMessage(role: "system", content: LLMPrompt.refinePrompt),
+                OllamaMessage(role: "system", content: prompt),
                 OllamaMessage(role: "user", content: text)
             ],
             stream: false
@@ -40,7 +42,7 @@ final class OllamaLLM: LLMService, @unchecked Sendable {
 
         request.httpBody = try JSONEncoder().encode(requestBody)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await NetworkConfig.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw LLMError.network("Invalid response")
@@ -68,7 +70,7 @@ final class OllamaLLM: LLMService, @unchecked Sendable {
         request.httpMethod = "GET"
         request.timeoutInterval = 5
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await NetworkConfig.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             return false

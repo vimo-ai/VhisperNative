@@ -26,13 +26,25 @@ class AudioLevelMonitor: ObservableObject {
 
     // MARK: - Private Properties
 
-    private let audioEngine = AVAudioEngine()
+    private var audioEngine: AVAudioEngine?
     private let numberOfBands = 20
 
     // FFT
     private let fftSize = 1024
     private var fftSetup: FFTSetup?
     private var log2n: vDSP_Length = 0
+
+    // Pre-allocated FFT buffers (performance optimization)
+    private var windowedSamples: [Float]
+    private var window: [Float]
+    private var realp: [Float]
+    private var imagp: [Float]
+    private var magnitudes: [Float]
+    private var normalizedMagnitudes: [Float]
+
+    // UI update throttling
+    private var lastUIUpdate: Date = .distantPast
+    private let uiUpdateInterval: TimeInterval = 0.033 // ~30fps
 
     // Smoothing
     private var smoothedLevels: [Float] = Array(repeating: 0.0, count: 20)
@@ -44,6 +56,17 @@ class AudioLevelMonitor: ObservableObject {
     private var updateCounter: Int = 0
 
     private init() {
+        // Pre-allocate all FFT buffers
+        windowedSamples = [Float](repeating: 0, count: fftSize)
+        window = [Float](repeating: 0, count: fftSize)
+        realp = [Float](repeating: 0, count: fftSize / 2)
+        imagp = [Float](repeating: 0, count: fftSize / 2)
+        magnitudes = [Float](repeating: 0, count: fftSize / 2)
+        normalizedMagnitudes = [Float](repeating: 0, count: fftSize / 2)
+
+        // Pre-compute Hanning window (only needs to be done once)
+        vDSP_hann_window(&window, vDSP_Length(fftSize), Int32(vDSP_HANN_NORM))
+
         setupFFT()
     }
 
@@ -74,10 +97,11 @@ class AudioLevelMonitor: ObservableObject {
     }
 
     func stopMonitoring() {
-        guard isMonitoring else { return }
+        guard isMonitoring, let engine = audioEngine else { return }
 
-        audioEngine.inputNode.removeTap(onBus: 0)
-        audioEngine.stop()
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+        audioEngine = nil
         isMonitoring = false
 
         DispatchQueue.main.async { [weak self] in
@@ -91,14 +115,23 @@ class AudioLevelMonitor: ObservableObject {
     // MARK: - Private Methods
 
     private func setupAudioEngine() throws {
-        let inputNode = audioEngine.inputNode
+        // Create fresh audio engine for each monitoring session
+        let engine = AVAudioEngine()
+        audioEngine = engine
+
+        let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
+
+        // Validate format
+        guard format.sampleRate > 0 else {
+            throw NSError(domain: "AudioLevelMonitor", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid audio format"])
+        }
 
         inputNode.installTap(onBus: 0, bufferSize: UInt32(fftSize), format: format) { [weak self] buffer, _ in
             self?.processFFT(buffer)
         }
 
-        try audioEngine.start()
+        try engine.start()
     }
 
     private func processFFT(_ buffer: AVAudioPCMBuffer) {
@@ -108,18 +141,17 @@ class AudioLevelMonitor: ObservableObject {
         let frameLength = Int(buffer.frameLength)
         guard frameLength >= fftSize else { return }
 
+        // Throttle UI updates
+        let now = Date()
+        guard now.timeIntervalSince(lastUIUpdate) >= uiUpdateInterval else { return }
+        lastUIUpdate = now
+
         let samples = channelData[0]
 
-        // Apply Hanning window
-        var windowedSamples = [Float](repeating: 0, count: fftSize)
-        var window = [Float](repeating: 0, count: fftSize)
-        vDSP_hann_window(&window, vDSP_Length(fftSize), Int32(vDSP_HANN_NORM))
+        // Apply Hanning window using pre-allocated buffers
         vDSP_vmul(samples, 1, window, 1, &windowedSamples, 1, vDSP_Length(fftSize))
 
-        // Prepare split complex format
-        var realp = [Float](repeating: 0, count: fftSize / 2)
-        var imagp = [Float](repeating: 0, count: fftSize / 2)
-
+        // Prepare split complex format using pre-allocated buffers
         realp.withUnsafeMutableBufferPointer { realBP in
             imagp.withUnsafeMutableBufferPointer { imagBP in
                 var splitComplex = DSPSplitComplex(realp: realBP.baseAddress!, imagp: imagBP.baseAddress!)
@@ -133,12 +165,10 @@ class AudioLevelMonitor: ObservableObject {
                 // Execute FFT
                 vDSP_fft_zrip(fftSetup, &splitComplex, 1, log2n, FFTDirection(FFT_FORWARD))
 
-                // Calculate magnitudes
-                var magnitudes = [Float](repeating: 0, count: fftSize / 2)
+                // Calculate magnitudes using pre-allocated buffer
                 vDSP_zvmags(&splitComplex, 1, &magnitudes, 1, vDSP_Length(fftSize / 2))
 
-                // Convert to dB and normalize
-                var normalizedMagnitudes = [Float](repeating: 0, count: fftSize / 2)
+                // Convert to dB and normalize using pre-allocated buffer
                 var one: Float = 1.0
                 vDSP_vdbcon(magnitudes, 1, &one, &normalizedMagnitudes, 1, vDSP_Length(fftSize / 2), 0)
 

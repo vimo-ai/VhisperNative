@@ -1,0 +1,11 @@
+{
+  "name": "vhisper-native",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "release": "bumpp --execute=\"./scripts/sync-version.sh %s\" --commit --tag --push"
+  },
+  "devDependencies": {
+    "bumpp": "^9.9.1"
+  }
+}

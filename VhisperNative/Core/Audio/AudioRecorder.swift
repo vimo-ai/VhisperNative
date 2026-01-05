@@ -9,7 +9,7 @@ import AVFoundation
 import Accelerate
 
 actor AudioRecorder {
-    private let audioEngine = AVAudioEngine()
+    private var audioEngine: AVAudioEngine?
     private var audioBuffer: [Float] = []
     private var isRecording = false
 
@@ -25,8 +25,18 @@ actor AudioRecorder {
     func start() throws {
         guard !isRecording else { return }
 
-        let inputNode = audioEngine.inputNode
+        // Create fresh audio engine for each recording session
+        let engine = AVAudioEngine()
+        audioEngine = engine
+
+        let inputNode = engine.inputNode
+
+        // Validate input node has valid format
         let inputFormat = inputNode.outputFormat(forBus: 0)
+        guard inputFormat.sampleRate > 0 else {
+            throw AudioRecorderError.invalidAudioFormat
+        }
+
         let sourceSampleRate = inputFormat.sampleRate
         let sourceChannels = inputFormat.channelCount
 
@@ -46,15 +56,16 @@ actor AudioRecorder {
             }
         }
 
-        try audioEngine.start()
+        try engine.start()
         isRecording = true
     }
 
     func stop() -> [Float] {
-        guard isRecording else { return [] }
+        guard isRecording, let engine = audioEngine else { return [] }
 
-        audioEngine.inputNode.removeTap(onBus: 0)
-        audioEngine.stop()
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+        audioEngine = nil
         isRecording = false
 
         let result = audioBuffer
@@ -71,9 +82,10 @@ actor AudioRecorder {
     }
 
     func cancel() {
-        if isRecording {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            audioEngine.stop()
+        if isRecording, let engine = audioEngine {
+            engine.inputNode.removeTap(onBus: 0)
+            engine.stop()
+            audioEngine = nil
             isRecording = false
         }
         audioBuffer.removeAll()
@@ -89,21 +101,49 @@ actor AudioRecorder {
     private func processBuffer(_ buffer: AVAudioPCMBuffer, resampleRatio: Double, sourceChannels: Int) {
         guard let channelData = buffer.floatChannelData else { return }
         let frameLength = Int(buffer.frameLength)
+        guard frameLength > 0 else { return }
+
+        // Pre-calculate for performance
+        let channelDivisor = 1.0 / Float(max(1, sourceChannels))
+        let resampleStep = 1.0 / resampleRatio
+
+        // Estimate output size and pre-allocate
+        let estimatedOutputFrames = Int(Double(frameLength) / resampleRatio) + 1
+        audioBuffer.reserveCapacity(audioBuffer.count + estimatedOutputFrames)
+
+        // Safely determine actual channel count
+        let actualChannels = min(sourceChannels, Int(buffer.format.channelCount))
 
         for frame in 0..<frameLength {
-            // Mix channels to mono
+            // Mix channels to mono with bounds checking
             var mono: Float = 0
-            for channel in 0..<sourceChannels {
+            for channel in 0..<actualChannels {
                 mono += channelData[channel][frame]
             }
-            mono /= Float(sourceChannels)
+            mono *= channelDivisor
 
             // Resample using accumulator (precise linear interpolation)
-            resampleAccumulator += 1.0 / resampleRatio
+            resampleAccumulator += resampleStep
             while resampleAccumulator >= 1.0 {
                 audioBuffer.append(mono)
                 resampleAccumulator -= 1.0
             }
+        }
+    }
+}
+
+// MARK: - Audio Recorder Error
+
+enum AudioRecorderError: Error, LocalizedError {
+    case invalidAudioFormat
+    case noInputDevice
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidAudioFormat:
+            return "Invalid audio format. Please check microphone permissions."
+        case .noInputDevice:
+            return "No audio input device available."
         }
     }
 }

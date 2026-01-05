@@ -12,63 +12,85 @@ struct PermissionsView: View {
 
     var body: some View {
         Form {
-            Section("Required Permissions") {
-                // Microphone
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Microphone")
+            Section(LocalizedStringKey("permissions.title")) {
+                Text(LocalizedStringKey("permissions.description"))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+
+            // Accessibility
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text(LocalizedStringKey("permissions.accessibility"))
                             .font(.headline)
-                        Text("Required for voice recording")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        Spacer()
+                        statusBadge(permissionManager.accessibilityStatus)
                     }
 
-                    Spacer()
+                    Text(LocalizedStringKey("permissions.accessibility.description"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
 
-                    permissionStatusView(permissionManager.microphoneStatus)
-
-                    if permissionManager.microphoneStatus != .granted {
-                        Button("Open Settings") {
-                            permissionManager.openMicrophoneSettings()
+                    if permissionManager.accessibilityStatus == .granted {
+                        Text(LocalizedStringKey("permissions.accessibility.granted"))
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    } else {
+                        Button(LocalizedStringKey("permissions.button.open_settings")) {
+                            permissionManager.requestAccessibilityPermission()
                         }
                         .buttonStyle(.bordered)
+
+                        Text(LocalizedStringKey("permissions.accessibility.instruction"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
+            }
 
-                // Accessibility
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Accessibility")
+            // Microphone
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text(LocalizedStringKey("permissions.microphone"))
                             .font(.headline)
-                        Text("Required for global hotkeys and text input")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        Spacer()
+                        statusBadge(permissionManager.microphoneStatus)
                     }
 
-                    Spacer()
+                    Text(LocalizedStringKey("permissions.microphone.description"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
 
-                    permissionStatusView(permissionManager.accessibilityStatus)
-
-                    if permissionManager.accessibilityStatus != .granted {
-                        Button("Open Settings") {
-                            permissionManager.openAccessibilitySettings()
+                    if permissionManager.microphoneStatus == .granted {
+                        Text(LocalizedStringKey("permissions.microphone.granted"))
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    } else {
+                        Button(LocalizedStringKey("permissions.button.request")) {
+                            permissionManager.forceRequestMicrophonePermission()
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.borderedProminent)
+
+                        if permissionManager.microphoneStatus == .denied {
+                            Button(LocalizedStringKey("permissions.button.open_settings")) {
+                                permissionManager.openMicrophoneSettings()
+                            }
+                            .buttonStyle(.bordered)
+
+                            Text(LocalizedStringKey("permissions.microphone.manual_instruction"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
             }
 
             Section {
-                Button("Refresh Status") {
-                    permissionManager.checkAllPermissions()
-                }
-            }
-
-            if permissionManager.hasPermissionIssues {
-                Section {
-                    Text("Some permissions are not granted. Vhisper may not work properly without all required permissions.")
-                        .font(.caption)
-                        .foregroundColor(.orange)
+                Button(LocalizedStringKey("permissions.button.refresh")) {
+                    permissionManager.forceRefreshMicrophonePermission()
+                    permissionManager.forceRefreshAccessibilityPermission()
                 }
             }
         }
@@ -79,20 +101,31 @@ struct PermissionsView: View {
     }
 
     @ViewBuilder
-    private func permissionStatusView(_ status: PermissionManager.PermissionStatus) -> some View {
-        switch status {
-        case .granted:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(.green)
-        case .denied:
-            Image(systemName: "xmark.circle.fill")
-                .foregroundColor(.red)
-        case .notDetermined:
-            Image(systemName: "questionmark.circle.fill")
-                .foregroundColor(.orange)
-        case .unknown:
-            Image(systemName: "minus.circle.fill")
-                .foregroundColor(.gray)
+    private func statusBadge(_ status: PermissionManager.PermissionStatus) -> some View {
+        HStack(spacing: 4) {
+            switch status {
+            case .granted:
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                Text(LocalizedStringKey("permissions.status.granted"))
+                    .foregroundColor(.green)
+            case .denied:
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(.red)
+                Text(LocalizedStringKey("permissions.status.denied"))
+                    .foregroundColor(.red)
+            case .notDetermined:
+                Image(systemName: "questionmark.circle.fill")
+                    .foregroundColor(.orange)
+                Text(LocalizedStringKey("permissions.status.not_requested"))
+                    .foregroundColor(.orange)
+            case .unknown:
+                Image(systemName: "minus.circle.fill")
+                    .foregroundColor(.gray)
+                Text(LocalizedStringKey("permissions.status.unknown"))
+                    .foregroundColor(.gray)
+            }
         }
+        .font(.subheadline)
     }
 }

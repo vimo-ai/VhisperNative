@@ -12,10 +12,12 @@ struct VhisperNativeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        Settings {
+        Window("Vhisper Settings", id: "settings") {
             SettingsView()
                 .environmentObject(VhisperManager.shared)
                 .environmentObject(HotkeyManager.shared)
         }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
     }
 }

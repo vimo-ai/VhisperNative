@@ -19,6 +19,7 @@ actor VoicePipeline {
     private let audioRecorder = AudioRecorder()
     private var asrService: (any StreamingASRService)?
     private var llmService: (any LLMService)?
+    private var vocabularyProcessor: VocabularyProcessor?
     private var config: AppConfig
 
     private var currentState: PipelineState = .idle
@@ -26,6 +27,7 @@ actor VoicePipeline {
     // Streaming session
     private var streamingControl: (@Sendable (StreamingControl) async -> Void)?
     private var streamingTask: Task<Void, Never>?
+    private var eventProcessingTask: Task<Void, Never>?
 
     // Event callback
     private var onEvent: (@Sendable (PipelineEvent) -> Void)?
@@ -52,7 +54,10 @@ actor VoicePipeline {
             asrService = streaming
         }
 
-        // Create LLM service
+        // Create vocabulary processor
+        vocabularyProcessor = VocabularyProcessor(config: config.vocabulary)
+
+        // Create LLM service with vocabulary context
         let asrApiKey: String?
         switch config.asr.provider {
         case .qwen:
@@ -62,7 +67,8 @@ actor VoicePipeline {
         default:
             asrApiKey = nil
         }
-        llmService = LLMFactory.create(config: config.llm, asrApiKey: asrApiKey)
+        let vocabularyContext = config.vocabulary.llmContextString
+        llmService = LLMFactory.create(config: config.llm, vocabularyContext: vocabularyContext, asrApiKey: asrApiKey)
     }
 
     // MARK: - Recording Control
@@ -101,9 +107,13 @@ actor VoicePipeline {
             }
         }
 
-        // Process ASR events
-        Task {
+        // Cancel any existing event processing task
+        eventProcessingTask?.cancel()
+
+        // Process ASR events with proper lifecycle management
+        eventProcessingTask = Task {
             for await event in events {
+                guard !Task.isCancelled else { break }
                 await handleASREvent(event)
             }
         }
@@ -147,8 +157,14 @@ actor VoicePipeline {
     func cancel() async {
         await audioRecorder.cancel()
         await streamingControl?(.cancel)
+
+        // Cancel all running tasks
         streamingTask?.cancel()
+        eventProcessingTask?.cancel()
+
+        // Clean up
         streamingTask = nil
+        eventProcessingTask = nil
         streamingControl = nil
         currentState = .idle
         onEvent?(.cancelled)
@@ -164,12 +180,17 @@ actor VoicePipeline {
         case .final(let text):
             var finalText = text
 
+            // Apply post-ASR vocabulary replacement
+            if let processor = vocabularyProcessor, config.vocabulary.enabled && config.vocabulary.enablePostASRReplacement {
+                finalText = processor.process(finalText)
+            }
+
             // Apply LLM refinement if enabled
-            if let llm = llmService, !text.isEmpty {
+            if let llm = llmService, !finalText.isEmpty {
                 do {
-                    finalText = try await llm.refineText(text)
+                    finalText = try await llm.refineText(finalText)
                 } catch {
-                    // LLM failed, use original text
+                    // LLM failed, use text after vocabulary processing
                     onEvent?(.warning("LLM refinement failed: \(error.localizedDescription)"))
                 }
             }

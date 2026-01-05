@@ -44,8 +44,15 @@ class HotkeyManager: ObservableObject {
 
     // MARK: - Registration
 
-    func register() {
+    @discardableResult
+    func register() -> Bool {
         unregister()
+
+        // Check accessibility permission first
+        guard AXIsProcessTrusted() else {
+            print("[Hotkey] Accessibility permission not granted, hotkey registration skipped")
+            return false
+        }
 
         if currentHotkey.isModifierOnly {
             if currentHotkey.useSpecificModifierKey {
@@ -65,6 +72,18 @@ class HotkeyManager: ObservableObject {
                 self?.handleKeyUp(event)
             }
         }
+
+        // Verify registration succeeded
+        let success = (currentHotkey.isModifierOnly && flagsMonitor != nil) ||
+                      (!currentHotkey.isModifierOnly && eventMonitor != nil && flagsMonitor != nil)
+
+        if !success {
+            print("[Hotkey] Failed to register event monitors")
+        } else {
+            print("[Hotkey] Registered successfully: \(currentHotkey.displayString)")
+        }
+
+        return success
     }
 
     func unregister() {

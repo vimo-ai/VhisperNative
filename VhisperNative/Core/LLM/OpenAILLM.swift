@@ -11,14 +11,16 @@ import Foundation
 final class OpenAILLM: LLMService, @unchecked Sendable {
     private let apiKey: String
     private let model: String
+    private let prompt: String
     private let temperature: Float
     private let maxTokens: Int
 
     private let apiURL = URL(string: "https://api.openai.com/v1/chat/completions")!
 
-    init(apiKey: String, model: String = "gpt-4o-mini", temperature: Float = 0.3, maxTokens: Int = 2000) {
+    init(apiKey: String, model: String = "gpt-4o-mini", prompt: String = LLMPrompt.defaultRefinePrompt, temperature: Float = 0.3, maxTokens: Int = 2000) {
         self.apiKey = apiKey
         self.model = model
+        self.prompt = prompt
         self.temperature = temperature
         self.maxTokens = maxTokens
     }
@@ -35,7 +37,7 @@ final class OpenAILLM: LLMService, @unchecked Sendable {
         let requestBody = OpenAIRequest(
             model: model,
             messages: [
-                OpenAIMessage(role: "system", content: LLMPrompt.refinePrompt),
+                OpenAIMessage(role: "system", content: prompt),
                 OpenAIMessage(role: "user", content: text)
             ],
             temperature: temperature,
@@ -44,7 +46,7 @@ final class OpenAILLM: LLMService, @unchecked Sendable {
 
         request.httpBody = try JSONEncoder().encode(requestBody)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await NetworkConfig.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw LLMError.network("Invalid response")

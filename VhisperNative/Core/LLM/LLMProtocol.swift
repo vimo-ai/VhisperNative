@@ -32,15 +32,19 @@ protocol LLMService: AnyObject, Sendable {
 // MARK: - Factory
 
 enum LLMFactory {
-    static func create(config: LLMConfig, asrApiKey: String? = nil) -> (any LLMService)? {
+    static func create(config: LLMConfig, vocabularyContext: String? = nil, asrApiKey: String? = nil) -> (any LLMService)? {
         guard config.enabled else { return nil }
+
+        // Get effective prompt (custom or default)
+        let basePrompt = config.customPrompt ?? LLMPrompt.defaultRefinePrompt
+        let prompt = LLMPrompt.buildPrompt(basePrompt: basePrompt, vocabularyContext: vocabularyContext)
 
         switch config.provider {
         case .dashscope:
             let dsConfig = config.dashscope ?? DashScopeLLMConfig()
             let apiKey = dsConfig.apiKey.isEmpty ? (asrApiKey ?? "") : dsConfig.apiKey
             guard !apiKey.isEmpty else { return nil }
-            return DashScopeLLM(apiKey: apiKey, model: dsConfig.model)
+            return DashScopeLLM(apiKey: apiKey, model: dsConfig.model, prompt: prompt)
 
         case .openai:
             guard let oaiConfig = config.openai, !oaiConfig.apiKey.isEmpty else {
@@ -49,13 +53,14 @@ enum LLMFactory {
             return OpenAILLM(
                 apiKey: oaiConfig.apiKey,
                 model: oaiConfig.model,
+                prompt: prompt,
                 temperature: oaiConfig.temperature,
                 maxTokens: oaiConfig.maxTokens
             )
 
         case .ollama:
             let ollamaConfig = config.ollama ?? OllamaLLMConfig()
-            return OllamaLLM(endpoint: ollamaConfig.endpoint, model: ollamaConfig.model)
+            return OllamaLLM(endpoint: ollamaConfig.endpoint, model: ollamaConfig.model, prompt: prompt)
         }
     }
 }
@@ -63,7 +68,7 @@ enum LLMFactory {
 // MARK: - Common Prompt
 
 enum LLMPrompt {
-    static let refinePrompt = """
+    static let defaultRefinePrompt = """
     You are a text refinement assistant. Your task is to:
     1. Fix any obvious spelling or grammar errors
     2. Add appropriate punctuation
@@ -73,4 +78,23 @@ enum LLMPrompt {
 
     Text to refine:
     """
+
+    /// Build complete prompt with optional vocabulary context
+    static func buildPrompt(basePrompt: String, vocabularyContext: String?) -> String {
+        guard let vocabContext = vocabularyContext, !vocabContext.isEmpty else {
+            return basePrompt
+        }
+
+        // Insert vocabulary context before "Text to refine:"
+        let insertionMarker = "Text to refine:"
+        if basePrompt.contains(insertionMarker) {
+            return basePrompt.replacingOccurrences(
+                of: insertionMarker,
+                with: "\n\(vocabContext)\n\n\(insertionMarker)"
+            )
+        } else {
+            // Append at the end if marker not found
+            return "\(basePrompt)\n\n\(vocabContext)"
+        }
+    }
 }
