@@ -16,6 +16,9 @@ env:
   SCHEME: 'VhisperNative'
   PRODUCT_NAME: 'Vhisper'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
