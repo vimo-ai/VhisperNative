@@ -173,6 +173,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupMenu() {
         statusMenu = NSMenu()
 
+        let copyTitle = LocalizationManager.shared.localizedString("menu.copy_last_result")
+        let copyItem = NSMenuItem(title: copyTitle, action: #selector(copyLastResult), keyEquivalent: "c")
+        copyItem.target = self
+        statusMenu?.addItem(copyItem)
+
+        statusMenu?.addItem(NSMenuItem.separator())
+
         let settingsTitle = LocalizationManager.shared.localizedString("menu.settings")
         let settingsItem = NSMenuItem(title: settingsTitle, action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
@@ -203,6 +210,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+    }
+
+    @objc private func copyLastResult() {
+        let lastResult = VhisperManager.shared.lastResult
+        guard !lastResult.isEmpty else { return }
+
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(lastResult, forType: .string)
     }
 
     @objc private func quitApp() {

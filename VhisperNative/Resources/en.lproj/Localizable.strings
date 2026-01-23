@@ -4,6 +4,7 @@
 */
 
 // MARK: - Menu Bar
+"menu.copy_last_result" = "Copy Last Result";
 "menu.settings" = "Settings...";
 "menu.quit" = "Quit";
 
