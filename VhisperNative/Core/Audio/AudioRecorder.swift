@@ -17,6 +17,9 @@ actor AudioRecorder {
     static let targetSampleRate: Double = 16000
     static let channels: AVAudioChannelCount = 1
 
+    // Buffer size limit: 30 seconds at 16kHz to prevent unbounded memory growth
+    private let maxBufferSize = 480000  // 16000 * 30
+
     // Resampling state
     private var resampleAccumulator: Double = 0
 
@@ -128,6 +131,11 @@ actor AudioRecorder {
                 audioBuffer.append(mono)
                 resampleAccumulator -= 1.0
             }
+        }
+
+        // Prevent unbounded buffer growth - keep only last 30 seconds
+        if audioBuffer.count > maxBufferSize {
+            audioBuffer.removeFirst(audioBuffer.count - maxBufferSize)
         }
     }
 }

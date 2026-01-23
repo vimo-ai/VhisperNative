@@ -10,8 +10,11 @@ import Carbon.HIToolbox
 
 /// Espanso-style keyboard simulator
 /// Reference: https://github.com/espanso/espanso/blob/dev/espanso-inject/src/mac/native.mm
-class KeySimulator {
+final class KeySimulator: @unchecked Sendable {
     static let shared = KeySimulator()
+
+    // Dedicated background queue for key events to avoid blocking main thread
+    private let keyEventQueue = DispatchQueue(label: "com.vhisper.keyevent", qos: .userInteractive)
 
     private init() {}
 
@@ -26,48 +29,54 @@ class KeySimulator {
 
         let delayMicroseconds: useconds_t = 1000
 
-        for chunk in chunks {
-            var chars = chunk
+        // Execute on background queue to avoid blocking main thread
+        keyEventQueue.async {
+            for chunk in chunks {
+                var chars = chunk
 
-            // Create key down event (source = nil to bypass restrictions)
-            guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true) else {
-                continue
+                // Create key down event (source = nil to bypass restrictions)
+                guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true) else {
+                    continue
+                }
+                keyDown.keyboardSetUnicodeString(stringLength: chars.count, unicodeString: &chars)
+                keyDown.flags = []  // Clear modifier flags
+
+                // Create key up event
+                guard let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else {
+                    continue
+                }
+                keyUp.keyboardSetUnicodeString(stringLength: chars.count, unicodeString: &chars)
+                keyUp.flags = []
+
+                // Post events to HID event tap
+                keyDown.post(tap: .cghidEventTap)
+                usleep(delayMicroseconds)
+                keyUp.post(tap: .cghidEventTap)
+                usleep(delayMicroseconds)
             }
-            keyDown.keyboardSetUnicodeString(stringLength: chars.count, unicodeString: &chars)
-            keyDown.flags = []  // Clear modifier flags
-
-            // Create key up event
-            guard let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else {
-                continue
-            }
-            keyUp.keyboardSetUnicodeString(stringLength: chars.count, unicodeString: &chars)
-            keyUp.flags = []
-
-            // Post events to HID event tap
-            keyDown.post(tap: .cghidEventTap)
-            usleep(delayMicroseconds)
-            keyUp.post(tap: .cghidEventTap)
-            usleep(delayMicroseconds)
         }
     }
 
     /// Simulate Cmd+V paste
     func simulatePaste() {
-        guard let source = CGEventSource(stateID: .hidSystemState) else { return }
+        // Execute on background queue to avoid blocking main thread
+        keyEventQueue.async {
+            guard let source = CGEventSource(stateID: .hidSystemState) else { return }
 
-        let keyV: CGKeyCode = 9  // V key
+            let keyV: CGKeyCode = 9  // V key
 
-        // Key down with Command
-        guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyV, keyDown: true) else { return }
-        keyDown.flags = .maskCommand
+            // Key down with Command
+            guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyV, keyDown: true) else { return }
+            keyDown.flags = .maskCommand
 
-        // Key up
-        guard let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyV, keyDown: false) else { return }
-        keyUp.flags = .maskCommand
+            // Key up
+            guard let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyV, keyDown: false) else { return }
+            keyUp.flags = .maskCommand
 
-        keyDown.post(tap: .cghidEventTap)
-        usleep(10000)  // 10ms
-        keyUp.post(tap: .cghidEventTap)
+            keyDown.post(tap: .cghidEventTap)
+            usleep(10000)  // 10ms
+            keyUp.post(tap: .cghidEventTap)
+        }
     }
 }
 
@@ -75,7 +84,8 @@ class KeySimulator {
 
 import AppKit
 
-class ClipboardManager {
+@MainActor
+final class ClipboardManager {
     static let shared = ClipboardManager()
 
     private let pasteboard = NSPasteboard.general
@@ -112,7 +122,8 @@ class ClipboardManager {
 
 // MARK: - Text Output Service
 
-class TextOutputService {
+@MainActor
+final class TextOutputService {
     static let shared = TextOutputService()
 
     private let clipboard = ClipboardManager.shared

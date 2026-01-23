@@ -70,6 +70,17 @@
 "settings.language.system" = "跟随系统";
 "settings.language.description" = "选择应用界面的显示语言。";
 
+// 输出设置
+"settings.output.title" = "输出";
+"settings.output.remove_punctuation" = "删除末尾标点";
+"settings.output.remove_punctuation.hint" = "自动删除识别文本末尾的指定标点符号。";
+"settings.output.punctuation_chars" = "要删除的标点";
+"settings.output.punctuation_chars.hint" = "从末尾删除的字符（如 。.）";
+"settings.output.remove_filler_words" = "删除语气词";
+"settings.output.remove_filler_words.hint" = "自动删除识别文本中的语气词，如 \"嗯\"、\"啊\"、\"那个\" 等。";
+"settings.output.filler_words" = "语气词列表";
+"settings.output.filler_words.hint" = "用逗号分隔的语气词列表";
+
 // 保存按钮
 "settings.save" = "保存设置";
 "settings.save.success" = "保存成功";

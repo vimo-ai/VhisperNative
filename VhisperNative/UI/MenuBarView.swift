@@ -10,6 +10,7 @@ import SwiftUI
 struct MenuBarView: View {
     @EnvironmentObject var manager: VhisperManager
     @EnvironmentObject var hotkeyManager: HotkeyManager
+    @State private var showCopySuccess = false
 
     var body: some View {
         VStack(spacing: 12) {
@@ -50,13 +51,28 @@ struct MenuBarView: View {
             // Last result
             if !manager.lastResult.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Last Result:")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    HStack {
+                        Text("Last Result:")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Spacer()
+
+                        // Copy button
+                        Button(action: copyLastResult) {
+                            Image(systemName: showCopySuccess ? "checkmark" : "doc.on.doc")
+                                .font(.system(size: 11))
+                                .foregroundColor(showCopySuccess ? .green : .accentColor)
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Copy to clipboard")
+                    }
+
                     Text(manager.lastResult)
                         .font(.callout)
                         .lineLimit(3)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
                 }
                 .padding(8)
                 .background(Color.secondary.opacity(0.1))
@@ -99,5 +115,15 @@ struct MenuBarView: View {
         }
         .padding(.horizontal, 12)
         .frame(width: 280)
+    }
+
+    private func copyLastResult() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(manager.lastResult, forType: .string)
+
+        showCopySuccess = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            showCopySuccess = false
+        }
     }
 }

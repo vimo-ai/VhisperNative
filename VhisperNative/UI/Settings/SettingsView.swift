@@ -1479,6 +1479,19 @@ struct GeneralSettingsContent: View {
     @EnvironmentObject var manager: VhisperManager
     @ObservedObject private var localizationManager = LocalizationManager.shared
 
+    /// Binding to convert [String] to comma-separated string for editing
+    private var fillerWordsBinding: Binding<String> {
+        Binding(
+            get: { manager.config.output.fillerWordsToRemove.joined(separator: ", ") },
+            set: { newValue in
+                manager.config.output.fillerWordsToRemove = newValue
+                    .split(separator: ",")
+                    .map { String($0).trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
+            }
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             // Header
@@ -1498,6 +1511,37 @@ struct GeneralSettingsContent: View {
                     .frame(width: 160)
                     .onChange(of: manager.config.general.language) { newLanguage in
                         localizationManager.setLanguage(newLanguage)
+                    }
+                }
+            }
+
+            // Output Section
+            SettingsSection(title: "settings.output.title".localized()) {
+                SettingsRow(label: "settings.output.remove_punctuation".localized(), hint: "settings.output.remove_punctuation.hint".localized()) {
+                    Toggle("", isOn: $manager.config.output.removeTrailingPunctuation)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+
+                if manager.config.output.removeTrailingPunctuation {
+                    SettingsRow(label: "settings.output.punctuation_chars".localized(), hint: "settings.output.punctuation_chars.hint".localized()) {
+                        TextField("", text: $manager.config.output.punctuationToRemove)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 100)
+                    }
+                }
+
+                SettingsRow(label: "settings.output.remove_filler_words".localized(), hint: "settings.output.remove_filler_words.hint".localized()) {
+                    Toggle("", isOn: $manager.config.output.removeFillerWords)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+
+                if manager.config.output.removeFillerWords {
+                    SettingsRow(label: "settings.output.filler_words".localized(), hint: "settings.output.filler_words.hint".localized()) {
+                        TextField("", text: fillerWordsBinding)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 200)
                     }
                 }
             }

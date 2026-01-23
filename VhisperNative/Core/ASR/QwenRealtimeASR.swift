@@ -71,6 +71,9 @@ final class QwenRealtimeASR: StreamingASRService, @unchecked Sendable {
         // Create event stream
         let (eventStream, eventContinuation) = AsyncStream<StreamingASREvent>.makeStream()
 
+        // Store receive task for explicit cancellation
+        var receiveTask: Task<Void, Never>?
+
         // Create control handler - capture webSocket strongly to keep connection alive
         // The connection will be released when cancel is called
         let controlHandler: @Sendable (StreamingControl) async -> Void = { control in
@@ -102,6 +105,8 @@ final class QwenRealtimeASR: StreamingASRService, @unchecked Sendable {
                     try await webSocket.send(.string(jsonString))
 
                 case .cancel:
+                    // Cancel receive task first, then close WebSocket
+                    receiveTask?.cancel()
                     webSocket.cancel(with: .normalClosure, reason: nil)
                 }
             } catch {
@@ -111,10 +116,10 @@ final class QwenRealtimeASR: StreamingASRService, @unchecked Sendable {
         }
 
         // Start receiving messages
-        Task {
+        receiveTask = Task {
             var accumulatedText = ""
 
-            while true {
+            while !Task.isCancelled {
                 do {
                     let message = try await webSocket.receive()
 

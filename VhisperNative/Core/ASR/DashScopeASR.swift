@@ -59,6 +59,9 @@ final class DashScopeASR: StreamingASRService, @unchecked Sendable {
 
         let (eventStream, eventContinuation) = AsyncStream<StreamingASREvent>.makeStream()
 
+        // Store receive task for explicit cancellation
+        var receiveTask: Task<Void, Never>?
+
         // Capture webSocket strongly to keep connection alive
         let controlHandler: @Sendable (StreamingControl) async -> Void = { control in
             switch control {
@@ -90,13 +93,15 @@ final class DashScopeASR: StreamingASRService, @unchecked Sendable {
                 }
 
             case .cancel:
+                // Cancel receive task first, then close WebSocket
+                receiveTask?.cancel()
                 webSocket.cancel(with: .normalClosure, reason: nil)
             }
         }
 
         // Receive messages
-        Task {
-            while true {
+        receiveTask = Task {
+            while !Task.isCancelled {
                 do {
                     let message = try await webSocket.receive()
 
