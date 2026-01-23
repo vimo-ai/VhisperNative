@@ -19,6 +19,7 @@
 		3E42CD20BF35003E53E40F5E /* FunASR.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9410116987ED587331CAF24 /* FunASR.swift */; };
 		4ABD6D5B898CDE7FF00452B0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3F96FBDD171BAEAC060E31C7 /* Assets.xcassets */; };
 		4F4A7CC01FE432B80900E229 /* LLMSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8261347C6BCAD6B22A95AFF /* LLMSettingsView.swift */; };
+		539E956E566661B167FDCB9E /* VoiceprintManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 334DE38F58E14F1A361D388E /* VoiceprintManager.swift */; };
 		5CF7E51254AB1664153C373E /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = B7C297AE22A7B7EBFF27CB15 /* Localizable.strings */; };
 		5D009AFD1A68588B154B15D8 /* ConfigStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44543319B1449609D48F9003 /* ConfigStorage.swift */; };
 		6239FAF7FC184D56822E236C /* ASRSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D267DFC3445FAA804A32CD9 /* ASRSettingsView.swift */; };
@@ -34,6 +35,7 @@
 		C2CEF717B75374804663C80F /* LocalizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A157F5C2F5F11AE93DD6F53A /* LocalizationManager.swift */; };
 		C3EB43941614A0D1F8939AC0 /* LLMProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77570817BA523108224EB978 /* LLMProtocol.swift */; };
 		C59A24A681043DBC0C2A3903 /* OllamaLLM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140A85868DE24208C27661CD /* OllamaLLM.swift */; };
+		C770C5076B17C0A205C20D35 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = 653A39B0021D53AEB11A0F79 /* FluidAudio */; };
 		CD57B9026CAC8F7C8F39CED3 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0844D25392959B288DF198E /* HotkeyManager.swift */; };
 		DF3BB8AB9F97675235FDE7E1 /* VhisperNativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1134980E21882BA03CBE3811 /* VhisperNativeApp.swift */; };
 		E7B9244618042C7CFD80DEC2 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24062E857A818FD71AEF67C4 /* MenuBarView.swift */; };
@@ -41,6 +43,7 @@
 		EC0678240EFCA121FC767DB3 /* menubar_icon.svg in Resources */ = {isa = PBXBuildFile; fileRef = 017FC921BAA5B3BE6EBEBF61 /* menubar_icon.svg */; };
 		ECC09972B955C3464051FD65 /* DashScopeLLM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3560958F3251FEEED103CE /* DashScopeLLM.swift */; };
 		F20DF0DED402AB4BB2057A13 /* QwenRealtimeASR.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F5EDA9BA660D27D25CCFA64 /* QwenRealtimeASR.swift */; };
+		F38B28B3E9585AB81FE4DE85 /* VoiceprintSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9FBC7B54AB937D34BB3609D /* VoiceprintSettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +57,7 @@
 		201BE08D513C5ED6969B84EC /* MetaballWaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetaballWaveformView.swift; sourceTree = "<group>"; };
 		24062E857A818FD71AEF67C4 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		2F10E988DE1AC093DAC0C562 /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
+		334DE38F58E14F1A361D388E /* VoiceprintManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceprintManager.swift; sourceTree = "<group>"; };
 		3F96FBDD171BAEAC060E31C7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		42647238B4C27A76F736E05F /* icon.svg */ = {isa = PBXFileReference; path = icon.svg; sourceTree = "<group>"; };
 		44543319B1449609D48F9003 /* ConfigStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigStorage.swift; sourceTree = "<group>"; };
@@ -72,6 +76,7 @@
 		AAA728BBC483F61114AAB5B1 /* ASRProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASRProtocol.swift; sourceTree = "<group>"; };
 		B19B2EBD1DC3AA6F112F2A4B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B7ADFCE8A0305B0048E863A8 /* KeySimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeySimulator.swift; sourceTree = "<group>"; };
+		D9FBC7B54AB937D34BB3609D /* VoiceprintSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceprintSettingsView.swift; sourceTree = "<group>"; };
 		DBD2E20F973944A487194FF1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		E0397C7D2529C5DD48A00BEB /* OpenAIWhisperASR.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIWhisperASR.swift; sourceTree = "<group>"; };
 		E0844D25392959B288DF198E /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
@@ -82,6 +87,17 @@
 		F9410116987ED587331CAF24 /* FunASR.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FunASR.swift; sourceTree = "<group>"; };
 		FF60C2C8512DC4F69E81198C /* WaveformWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformWindow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		73E62E9A51EA9034F0E22261 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C770C5076B17C0A205C20D35 /* FluidAudio in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		080172F7053AEA28228B1D6A /* Resources */ = {
@@ -116,6 +132,7 @@
 				E3CC07C3D1BDAC25BD45FF1E /* Network */,
 				D3FE7E6E333F1D4F9294CEDA /* Pipeline */,
 				4D1D0D8D634AC65F54F0375A /* Vocabulary */,
+				C3B2A79B8DF71ECEB5630028 /* Voiceprint */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -143,6 +160,7 @@
 				E8261347C6BCAD6B22A95AFF /* LLMSettingsView.swift */,
 				F08A9A4A2F376A685544F6FA /* PermissionsView.swift */,
 				74AD07E3A86C826D235E95A5 /* SettingsView.swift */,
+				D9FBC7B54AB937D34BB3609D /* VoiceprintSettingsView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -179,13 +197,6 @@
 				82FBE6D75285EBF5473E2878 /* UI */,
 			);
 			path = VhisperNative;
-			sourceTree = "<group>";
-		};
-		4A99AF6C0C78361C7F52B574 /* Tray */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Tray;
 			sourceTree = "<group>";
 		};
 		4C261F72FCB11783DF1F7AC3 /* Output */ = {
@@ -273,7 +284,6 @@
 				292FC27888E820714AFC5528 /* Hotkey */,
 				4C261F72FCB11783DF1F7AC3 /* Output */,
 				81C7737730F4008C0C5833FE /* Permissions */,
-				4A99AF6C0C78361C7F52B574 /* Tray */,
 			);
 			path = System;
 			sourceTree = "<group>";
@@ -284,6 +294,14 @@
 				4934EAC2DAA9E71D380C4799 /* VhisperNative */,
 				1D02B728C8425615F198DD3C /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		C3B2A79B8DF71ECEB5630028 /* Voiceprint */ = {
+			isa = PBXGroup;
+			children = (
+				334DE38F58E14F1A361D388E /* VoiceprintManager.swift */,
+			);
+			path = Voiceprint;
 			sourceTree = "<group>";
 		};
 		D3FE7E6E333F1D4F9294CEDA /* Pipeline */ = {
@@ -311,6 +329,7 @@
 			buildPhases = (
 				DEB432FAF0D1030C98EF1AC3 /* Sources */,
 				4025D3AB3AC2DF7E6569CD16 /* Resources */,
+				73E62E9A51EA9034F0E22261 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -318,6 +337,7 @@
 			);
 			name = VhisperNative;
 			packageProductDependencies = (
+				653A39B0021D53AEB11A0F79 /* FluidAudio */,
 			);
 			productName = VhisperNative;
 			productReference = 537B6D0FE12204F7D74217AD /* VhisperNative.app */;
@@ -349,6 +369,9 @@
 			);
 			mainGroup = B60225292158A14A89EC5540;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				09C13DBC49A70D36A3382FAE /* XCRemoteSwiftPackageReference "FluidAudio" */,
+			);
 			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
@@ -406,6 +429,8 @@
 				DF3BB8AB9F97675235FDE7E1 /* VhisperNativeApp.swift in Sources */,
 				3D4A16301059C9DA8CD8C3A3 /* VocabularyProcessor.swift in Sources */,
 				3CB11F5569D792289F478882 /* VoicePipeline.swift in Sources */,
+				539E956E566661B167FDCB9E /* VoiceprintManager.swift in Sources */,
+				F38B28B3E9585AB81FE4DE85 /* VoiceprintSettingsView.swift in Sources */,
 				A5DEA69448E0A73737ECC479 /* WaveformWindow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -608,6 +633,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		09C13DBC49A70D36A3382FAE /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FluidInference/FluidAudio.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		653A39B0021D53AEB11A0F79 /* FluidAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 09C13DBC49A70D36A3382FAE /* XCRemoteSwiftPackageReference "FluidAudio" */;
+			productName = FluidAudio;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = ED2A91C26E6C9D74D34E4B80 /* Project object */;
 }
