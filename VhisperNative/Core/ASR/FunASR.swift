@@ -47,6 +47,9 @@ final class FunASR: StreamingASRService, @unchecked Sendable {
 
         let (eventStream, eventContinuation) = AsyncStream<StreamingASREvent>.makeStream()
 
+        // Store receive task for explicit cancellation
+        var receiveTask: Task<Void, Never>?
+
         // Capture webSocket strongly to keep connection alive
         let controlHandler: @Sendable (StreamingControl) async -> Void = { control in
             switch control {
@@ -73,15 +76,17 @@ final class FunASR: StreamingASRService, @unchecked Sendable {
                 }
 
             case .cancel:
+                // Cancel receive task first, then close WebSocket
+                receiveTask?.cancel()
                 webSocket.cancel(with: .normalClosure, reason: nil)
             }
         }
 
         // Receive messages
-        Task {
+        receiveTask = Task {
             var accumulatedText = ""
 
-            while true {
+            while !Task.isCancelled {
                 do {
                     let message = try await webSocket.receive()
 
@@ -203,7 +208,7 @@ private struct FunASRResponse: Decodable {
 
 // MARK: - Self-Signed Certificate Delegate
 
-private class SelfSignedCertDelegate: NSObject, URLSessionDelegate {
+private final class SelfSignedCertDelegate: NSObject, URLSessionDelegate, @unchecked Sendable {
     func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         // Accept self-signed certificates for local FunASR deployment
         if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,

@@ -69,7 +69,8 @@ class WaveformWindow: NSWindow {
 // MARK: - WaveformOverlayController
 
 /// Waveform overlay window manager (singleton)
-class WaveformOverlayController {
+@MainActor
+final class WaveformOverlayController {
     static let shared = WaveformOverlayController()
 
     private var window: WaveformWindow?
@@ -77,14 +78,14 @@ class WaveformOverlayController {
     private var monitor: AudioLevelMonitor?
     private var cancellable: AnyCancellable?
 
-    private var recognizedText: String = ""
-    private var stashText: String = ""
+    // Use view model for efficient in-place updates instead of view reconstruction
+    private let viewModel = WaveformViewModel()
 
     private init() {}
 
     func show(with monitor: AudioLevelMonitor) {
-        recognizedText = ""
-        stashText = ""
+        viewModel.clear()
+        viewModel.update(levels: monitor.levels)
 
         if window == nil {
             window = WaveformWindow()
@@ -92,11 +93,8 @@ class WaveformOverlayController {
 
         self.monitor = monitor
 
-        let metaballView = MetaballWaveformView(
-            levels: monitor.levels,
-            recognizedText: recognizedText,
-            stashText: stashText
-        )
+        // Create view once with view model - subsequent updates modify view model properties
+        let metaballView = MetaballWaveformView(viewModel: viewModel)
         hostingView = NSHostingView(rootView: metaballView)
 
         window?.contentView = hostingView
@@ -104,7 +102,8 @@ class WaveformOverlayController {
         cancellable = monitor.$levels
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newLevels in
-                self?.updateView(levels: newLevels)
+                // Update view model in-place instead of recreating view
+                self?.viewModel.update(levels: newLevels)
             }
 
         window?.show()
@@ -115,36 +114,16 @@ class WaveformOverlayController {
         cancellable?.cancel()
         cancellable = nil
         monitor = nil
-        recognizedText = ""
-        stashText = ""
+        viewModel.clear()
     }
 
     func updateText(text: String, stash: String) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.recognizedText = text
-            self.stashText = stash
-            self.updateView(levels: self.monitor?.levels ?? [])
-        }
+        // Update view model directly - no view reconstruction needed
+        viewModel.update(text: text, stash: stash)
     }
 
     func clearText() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.recognizedText = ""
-            self.stashText = ""
-            self.updateView(levels: self.monitor?.levels ?? [])
-        }
-    }
-
-    private func updateView(levels: [Float]) {
-        guard let hostingView = hostingView else { return }
-
-        let updatedView = MetaballWaveformView(
-            levels: levels,
-            recognizedText: recognizedText,
-            stashText: stashText
-        )
-        hostingView.rootView = updatedView
+        // Update view model directly - no view reconstruction needed
+        viewModel.clear()
     }
 }

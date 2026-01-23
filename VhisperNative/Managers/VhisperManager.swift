@@ -9,11 +9,11 @@ import SwiftUI
 import Combine
 
 /// Application version
-let appVersion = "1.0.0"
+let appVersion = "1.0.2"
 
 @MainActor
 class VhisperManager: ObservableObject {
-    nonisolated(unsafe) static let shared = VhisperManager()
+    static let shared = VhisperManager()
 
     // MARK: - Published State
 
@@ -210,14 +210,47 @@ class VhisperManager: ObservableObject {
             streamingText = text + stash
 
         case .finalResult(let text):
-            lastResult = text
+            var finalText = text
+
+            // Remove trailing punctuation if enabled
+            if config.output.removeTrailingPunctuation {
+                let punctuationSet = Set(config.output.punctuationToRemove)
+                while let lastChar = finalText.last, punctuationSet.contains(lastChar) {
+                    finalText.removeLast()
+                }
+            }
+
+            // Remove filler words if enabled
+            if config.output.removeFillerWords && !config.output.fillerWordsToRemove.isEmpty {
+                // Build regex pattern for all filler words at once (more efficient than multiple replacingOccurrences)
+                let escapedWords = config.output.fillerWordsToRemove.map { NSRegularExpression.escapedPattern(for: $0) }
+                let pattern = escapedWords.joined(separator: "|")
+                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                    finalText = regex.stringByReplacingMatches(
+                        in: finalText,
+                        range: NSRange(finalText.startIndex..., in: finalText),
+                        withTemplate: ""
+                    )
+                }
+                // Clean up multiple spaces with single regex pass
+                if let spaceRegex = try? NSRegularExpression(pattern: "  +", options: []) {
+                    finalText = spaceRegex.stringByReplacingMatches(
+                        in: finalText,
+                        range: NSRange(finalText.startIndex..., in: finalText),
+                        withTemplate: " "
+                    )
+                }
+                finalText = finalText.trimmingCharacters(in: .whitespaces)
+            }
+
+            lastResult = finalText
 
             // Output text or show warning for empty result
-            if !text.isEmpty {
+            if !finalText.isEmpty {
                 errorMessage = nil
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     TextOutputService.shared.outputText(
-                        text,
+                        finalText,
                         restoreClipboard: self.config.output.restoreClipboard,
                         pasteDelay: self.config.output.pasteDelayMs
                     )

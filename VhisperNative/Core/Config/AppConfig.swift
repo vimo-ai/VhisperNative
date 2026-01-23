@@ -288,12 +288,42 @@ struct OllamaLLMConfig: Codable {
 struct OutputConfig: Codable {
     var restoreClipboard: Bool
     var pasteDelayMs: Int
+    var removeTrailingPunctuation: Bool
+    var punctuationToRemove: String
+    var removeFillerWords: Bool
+    var fillerWordsToRemove: [String]
 
     static var `default`: OutputConfig {
         OutputConfig(
             restoreClipboard: true,
-            pasteDelayMs: 50
+            pasteDelayMs: 50,
+            removeTrailingPunctuation: false,
+            punctuationToRemove: "。.",
+            removeFillerWords: false,
+            fillerWordsToRemove: ["嗯", "啊", "呃", "哦", "那个", "就是", "然后"]
         )
+    }
+
+    // Custom decoder to handle missing fields in old configs
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        restoreClipboard = try container.decode(Bool.self, forKey: .restoreClipboard)
+        pasteDelayMs = try container.decode(Int.self, forKey: .pasteDelayMs)
+        removeTrailingPunctuation = try container.decodeIfPresent(Bool.self, forKey: .removeTrailingPunctuation) ?? false
+        punctuationToRemove = try container.decodeIfPresent(String.self, forKey: .punctuationToRemove) ?? "。."
+        removeFillerWords = try container.decodeIfPresent(Bool.self, forKey: .removeFillerWords) ?? false
+        fillerWordsToRemove = try container.decodeIfPresent([String].self, forKey: .fillerWordsToRemove) ?? ["嗯", "啊", "呃", "哦", "那个", "就是", "然后"]
+    }
+
+    init(restoreClipboard: Bool, pasteDelayMs: Int,
+         removeTrailingPunctuation: Bool = false, punctuationToRemove: String = "。.",
+         removeFillerWords: Bool = false, fillerWordsToRemove: [String] = ["嗯", "啊", "呃", "哦", "那个", "就是", "然后"]) {
+        self.restoreClipboard = restoreClipboard
+        self.pasteDelayMs = pasteDelayMs
+        self.removeTrailingPunctuation = removeTrailingPunctuation
+        self.punctuationToRemove = punctuationToRemove
+        self.removeFillerWords = removeFillerWords
+        self.fillerWordsToRemove = fillerWordsToRemove
     }
 }
 

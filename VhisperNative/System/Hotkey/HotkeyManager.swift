@@ -21,6 +21,7 @@ extension Array {
 
 // MARK: - Hotkey Manager
 
+@MainActor
 class HotkeyManager: ObservableObject {
     static let shared = HotkeyManager()
 
@@ -30,7 +31,23 @@ class HotkeyManager: ObservableObject {
 
     private var eventMonitor: Any?
     private var flagsMonitor: Any?
-    private(set) var isHotkeyPressed = false
+
+    // Thread-safe hotkey pressed state
+    private let _hotkeyLock = NSLock()
+    nonisolated(unsafe) private var _isHotkeyPressed = false
+
+    nonisolated var isHotkeyPressed: Bool {
+        get {
+            _hotkeyLock.lock()
+            defer { _hotkeyLock.unlock() }
+            return _isHotkeyPressed
+        }
+        set {
+            _hotkeyLock.lock()
+            _isHotkeyPressed = newValue
+            _hotkeyLock.unlock()
+        }
+    }
 
     // Recording state
     private var hotkeyRecordingMonitor: Any?

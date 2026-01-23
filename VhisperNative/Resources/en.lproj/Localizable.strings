@@ -4,6 +4,7 @@
 */
 
 // MARK: - Menu Bar
+"menu.copy_last_result" = "Copy Last Result";
 "menu.settings" = "Settings...";
 "menu.quit" = "Quit";
 
@@ -70,6 +71,17 @@
 "settings.language.title" = "Language";
 "settings.language.system" = "Follow System";
 "settings.language.description" = "Select the language for the app interface.";
+
+// Output Settings
+"settings.output.title" = "Output";
+"settings.output.remove_punctuation" = "Remove Trailing Punctuation";
+"settings.output.remove_punctuation.hint" = "Automatically remove specified punctuation marks from the end of transcribed text.";
+"settings.output.punctuation_chars" = "Punctuation to Remove";
+"settings.output.punctuation_chars.hint" = "Characters to remove from the end (e.g., 。.)";
+"settings.output.remove_filler_words" = "Remove Filler Words";
+"settings.output.remove_filler_words.hint" = "Remove common filler words like \"um\", \"uh\", \"you know\" from transcriptions.";
+"settings.output.filler_words" = "Filler Words";
+"settings.output.filler_words.hint" = "Comma-separated list of words to remove";
 
 // Save button
 "settings.save" = "Save Settings";

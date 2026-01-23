@@ -58,9 +58,8 @@ class PermissionManager: ObservableObject {
                 guard let self = self else { return }
                 let newStatus: PermissionStatus = granted ? .granted : .denied
                 print("[PermissionManager] Updating microphoneStatus to: \(newStatus)")
+                // @Published already sends objectWillChange - no manual send() needed
                 self.microphoneStatus = newStatus
-                // Force objectWillChange to trigger UI update
-                self.objectWillChange.send()
             }
         }
     }

@@ -8,6 +8,31 @@
 import SwiftUI
 import Combine
 
+// MARK: - WaveformViewModel
+
+/// Observable model for waveform state - enables efficient in-place updates
+/// instead of recreating the view hierarchy every frame
+@MainActor
+final class WaveformViewModel: ObservableObject {
+    @Published var levels: [Float] = Array(repeating: 0.0, count: 20)
+    @Published var recognizedText: String = ""
+    @Published var stashText: String = ""
+
+    func update(levels: [Float]) {
+        self.levels = levels
+    }
+
+    func update(text: String, stash: String) {
+        self.recognizedText = text
+        self.stashText = stash
+    }
+
+    func clear() {
+        self.recognizedText = ""
+        self.stashText = ""
+    }
+}
+
 // MARK: - MetaballWaveformView
 
 /// Metaball-style waveform view
@@ -15,9 +40,7 @@ import Combine
 /// Bottom layer: waveform display
 /// Both layers merged with alphaThreshold + blur
 struct MetaballWaveformView: View {
-    let levels: [Float]
-    let recognizedText: String
-    let stashText: String
+    @ObservedObject var viewModel: WaveformViewModel
 
     // Configuration
     private let waveformWidth: CGFloat = 120
@@ -26,7 +49,7 @@ struct MetaballWaveformView: View {
     private let maxTextWidth: CGFloat = 280
 
     var body: some View {
-        let displayText = recognizedText + stashText
+        let displayText = viewModel.recognizedText + viewModel.stashText
         let hasText = !displayText.isEmpty
 
         VStack(spacing: -4) {
@@ -46,7 +69,7 @@ struct MetaballWaveformView: View {
             }
 
             // Waveform bars
-            WaveformBarsView(levels: levels)
+            WaveformBarsView(levels: viewModel.levels)
                 .frame(width: waveformWidth - 28, height: waveformHeight - 16)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
@@ -96,10 +119,11 @@ struct WaveformBar: View {
     let level: Float
 
     var body: some View {
+        // Removed per-bar .animation() - AudioLevelMonitor already provides smoothed values
+        // This eliminates 600+ animation updates/sec overhead (20 bars × 30fps)
         RoundedRectangle(cornerRadius: 0.5)
             .fill(.white.opacity(barOpacity))
             .frame(width: 1.5, height: barHeight)
-            .animation(.easeOut(duration: 0.06), value: level)
     }
 
     private var barHeight: CGFloat {

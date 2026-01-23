@@ -10,6 +10,7 @@ import Accelerate
 import Combine
 
 /// Audio spectrum monitor with FFT analysis
+@MainActor
 class AudioLevelMonitor: ObservableObject {
     static let shared = AudioLevelMonitor()
 
@@ -31,7 +32,7 @@ class AudioLevelMonitor: ObservableObject {
 
     // FFT
     private let fftSize = 1024
-    private var fftSetup: FFTSetup?
+    nonisolated(unsafe) private var fftSetup: FFTSetup?
     private var log2n: vDSP_Length = 0
 
     // Pre-allocated FFT buffers (performance optimization)
@@ -135,6 +136,9 @@ class AudioLevelMonitor: ObservableObject {
     }
 
     private func processFFT(_ buffer: AVAudioPCMBuffer) {
+        // Early exit if monitoring stopped - prevents FFT work when waveform hidden
+        guard isMonitoring else { return }
+
         guard let fftSetup = fftSetup,
               let channelData = buffer.floatChannelData else { return }
 
@@ -178,12 +182,17 @@ class AudioLevelMonitor: ObservableObject {
                 DispatchQueue.main.async { [weak self] in
                     guard let self = self else { return }
 
+                    // Apply smoothing and track peak in single pass
+                    var peak: Float = 0
                     for i in 0..<self.numberOfBands {
-                        self.smoothedLevels[i] = self.smoothedLevels[i] * (1 - self.smoothingFactor) + bandLevels[i] * self.smoothingFactor
+                        let smoothed = self.smoothedLevels[i] * (1 - self.smoothingFactor) + bandLevels[i] * self.smoothingFactor
+                        self.smoothedLevels[i] = smoothed
+                        if smoothed > peak { peak = smoothed }
                     }
 
+                    // Batch update both properties - SwiftUI coalesces within same runloop
                     self.levels = self.smoothedLevels
-                    self.peakLevel = self.smoothedLevels.max() ?? 0
+                    self.peakLevel = peak
                 }
             }
         }

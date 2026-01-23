@@ -12,19 +12,17 @@ actor ConfigStorage {
 
     private let fileManager = FileManager.default
     private let configFileName = "config.json"
-
-    private var configDirectory: URL {
-        let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return appSupport.appendingPathComponent("VhisperNative", isDirectory: true)
-    }
+    private let configDirectoryURL: URL
 
     private var configFileURL: URL {
-        configDirectory.appendingPathComponent(configFileName)
+        configDirectoryURL.appendingPathComponent(configFileName)
     }
 
     private init() {
+        let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        configDirectoryURL = appSupport.appendingPathComponent("VhisperNative", isDirectory: true)
         // Ensure config directory exists
-        try? fileManager.createDirectory(at: configDirectory, withIntermediateDirectories: true)
+        try? fileManager.createDirectory(at: configDirectoryURL, withIntermediateDirectories: true)
     }
 
     // MARK: - Public API
@@ -45,10 +43,8 @@ actor ConfigStorage {
     }
 
     func save(_ config: AppConfig) async throws {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
-        let data = try encoder.encode(config)
+        // Use compact encoding for faster serialization (no prettyPrinted/sortedKeys overhead)
+        let data = try JSONEncoder().encode(config)
         try data.write(to: configFileURL, options: .atomic)
     }
 
