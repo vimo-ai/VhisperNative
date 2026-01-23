@@ -29,6 +29,11 @@ actor VoicePipeline {
     private var streamingTask: Task<Void, Never>?
     private var eventProcessingTask: Task<Void, Never>?
 
+    // Voiceprint filtering
+    private var voiceprintBuffer: [Float] = []
+    private var isVoiceprintVerified = false
+    private let voiceprintChunkSize = 32000  // 2 seconds at 16kHz (FluidAudio needs longer audio)
+
     // Event callback
     private var onEvent: (@Sendable (PipelineEvent) -> Void)?
 
@@ -88,6 +93,10 @@ actor VoicePipeline {
 
         currentState = .recording
 
+        // Reset voiceprint state
+        voiceprintBuffer = []
+        isVoiceprintVerified = false
+
         // Start audio recorder
         try await audioRecorder.start()
 
@@ -95,13 +104,27 @@ actor VoicePipeline {
         let (control, events) = try await asr.startStreaming(sampleRate: UInt32(AudioRecorder.targetSampleRate))
         streamingControl = control
 
-        // Start audio streaming task
+        // Capture config for use in task
+        let voiceprintEnabled = config.voiceprint.enabled
+        let chunkSize = voiceprintChunkSize
+
+        // Start audio streaming task with voiceprint filtering
         streamingTask = Task {
             while await audioRecorder.recordingState {
                 let samples = await audioRecorder.drainBuffer()
                 if !samples.isEmpty {
-                    let pcmData = AudioEncoder.encodeToPCM(samples)
-                    await control(.audio(pcmData))
+                    // Apply voiceprint filtering if enabled
+                    let filteredSamples = await filterWithVoiceprint(
+                        samples: samples,
+                        enabled: voiceprintEnabled,
+                        chunkSize: chunkSize
+                    )
+
+                    if !filteredSamples.isEmpty {
+                        let pcmData = AudioEncoder.encodeToPCM(filteredSamples)
+                        print("[Pipeline] Sending \(filteredSamples.count) samples (\(String(format: "%.2f", Double(filteredSamples.count) / 16000.0))s) to ASR")
+                        await control(.audio(pcmData))
+                    }
                 }
                 try? await Task.sleep(nanoseconds: 100_000_000)  // 100ms
             }
@@ -144,9 +167,13 @@ actor VoicePipeline {
 
         // Send remaining audio and commit
         if !samples.isEmpty {
+            print("[Pipeline] stopRecording: Sending remaining \(samples.count) samples (\(String(format: "%.2f", Double(samples.count) / 16000.0))s)")
             let pcmData = AudioEncoder.encodeToPCM(samples)
             await streamingControl?(.audio(pcmData))
+        } else {
+            print("[Pipeline] stopRecording: No remaining samples")
         }
+        print("[Pipeline] Sending commit to ASR")
         await streamingControl?(.commit)
 
         // Cancel streaming task
@@ -168,6 +195,54 @@ actor VoicePipeline {
         streamingControl = nil
         currentState = .idle
         onEvent?(.cancelled)
+    }
+
+    // MARK: - Voiceprint Filtering
+
+    /// Filter audio samples with voiceprint verification
+    private func filterWithVoiceprint(samples: [Float], enabled: Bool, chunkSize: Int) async -> [Float] {
+        // If voiceprint filtering is disabled, pass through all samples
+        guard enabled else {
+            return samples
+        }
+
+        // Check if voiceprint is registered
+        let hasVoiceprint = await VoiceprintManager.shared.hasVoiceprint
+        guard hasVoiceprint else {
+            // No voiceprint registered, pass through
+            return samples
+        }
+
+        // Add samples to buffer
+        voiceprintBuffer.append(contentsOf: samples)
+
+        // If already verified for this session, pass through
+        if isVoiceprintVerified {
+            return samples
+        }
+
+        // Need enough samples for verification
+        guard voiceprintBuffer.count >= chunkSize else {
+            // Not enough samples yet, buffer but don't send
+            return []
+        }
+
+        // Verify the buffered audio
+        let isMatch = await VoiceprintManager.shared.isMatch(samples: voiceprintBuffer)
+
+        if isMatch {
+            // Voiceprint matched! Send all buffered audio and mark as verified
+            isVoiceprintVerified = true
+            let bufferedSamples = voiceprintBuffer
+            voiceprintBuffer = []
+            onEvent?(.voiceprintVerified)
+            return bufferedSamples
+        } else {
+            // Not a match, clear buffer and continue listening
+            voiceprintBuffer = []
+            onEvent?(.voiceprintRejected)
+            return []
+        }
     }
 
     // MARK: - ASR Event Handling
@@ -221,6 +296,8 @@ enum PipelineEvent {
     case warning(String)
     case error(String)
     case cancelled
+    case voiceprintVerified    // Voiceprint matched, audio will be transcribed
+    case voiceprintRejected    // Voiceprint not matched, audio discarded
 }
 
 // MARK: - Pipeline Errors

@@ -62,6 +62,7 @@
 "settings.tab.output" = "Output";
 "settings.tab.hotkey" = "Hotkey";
 "settings.tab.permissions" = "Permissions";
+"settings.tab.voiceprint" = "Voiceprint";
 "settings.tab.about" = "About";
 
 // General Settings
@@ -159,6 +160,31 @@
 "state.idle" = "Ready";
 "state.recording" = "Recording...";
 "state.processing" = "Processing...";
+
+// MARK: - Voiceprint Settings
+"settings.voiceprint.title" = "Voiceprint";
+"settings.voiceprint.enable" = "Enable Voiceprint Filtering";
+"settings.voiceprint.enable.description" = "Only transcribe audio that matches your voiceprint, filtering out other speakers";
+"settings.voiceprint.registration" = "Voice Registration";
+"settings.voiceprint.registration.footer" = "Record a few seconds of your voice to register your voiceprint. Speak naturally as you would during normal use.";
+"settings.voiceprint.registered" = "Voiceprint Registered";
+"settings.voiceprint.not_registered" = "No Voiceprint Registered";
+"settings.voiceprint.register" = "Register Voiceprint";
+"settings.voiceprint.re_register" = "Re-register";
+"settings.voiceprint.clear" = "Clear";
+"settings.voiceprint.recording" = "Recording...";
+"settings.voiceprint.stop" = "Stop";
+"settings.voiceprint.speak_now" = "Speak now...";
+"settings.voiceprint.too_short" = "Recording too short. Please record at least %.0f seconds.";
+"settings.voiceprint.registered_success" = "Voiceprint registered successfully!";
+"settings.voiceprint.cleared" = "Voiceprint cleared.";
+"settings.voiceprint.initializing" = "Initializing voiceprint engine...";
+"settings.voiceprint.sensitivity" = "Verification Sensitivity";
+"settings.voiceprint.sensitivity.footer" = "Higher values are stricter and may reject your voice if there's background noise. Lower values are more lenient but may accept other voices.";
+"settings.voiceprint.threshold" = "Threshold";
+"settings.voiceprint.threshold.loose" = "Loose";
+"settings.voiceprint.threshold.normal" = "Normal";
+"settings.voiceprint.threshold.strict" = "Strict";
 
 // MARK: - General
 "general.cancel" = "Cancel";

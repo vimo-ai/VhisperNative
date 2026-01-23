@@ -1,4 +1,10 @@
 name: VhisperNative
+
+packages:
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio.git
+    from: "0.1.0"
+
 options:
   bundleIdPrefix: com.vimo-ai
   deploymentTarget:
@@ -41,6 +47,8 @@ targets:
         Release:
           PRODUCT_NAME: Vhisper
           PRODUCT_BUNDLE_IDENTIFIER: com.vimo-ai.VhisperNative
+    dependencies:
+      - package: FluidAudio
     entitlements:
       path: VhisperNative/Resources/VhisperNative.entitlements
     info:

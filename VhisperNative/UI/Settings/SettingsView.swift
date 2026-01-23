@@ -15,6 +15,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case asr = "asr"
     case llm = "llm"
     case vocabulary = "vocabulary"
+    case voiceprint = "voiceprint"
     case hotkey = "hotkey"
     case permissions = "permissions"
 
@@ -27,6 +28,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .asr: return "settings.tab.asr"
         case .llm: return "settings.tab.llm"
         case .vocabulary: return "settings.tab.vocabulary"
+        case .voiceprint: return "settings.tab.voiceprint"
         case .hotkey: return "settings.tab.hotkey"
         case .permissions: return "settings.tab.permissions"
         }
@@ -38,6 +40,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .asr: return "mic.fill"
         case .llm: return "sparkles"
         case .vocabulary: return "book.fill"
+        case .voiceprint: return "waveform.circle"
         case .hotkey: return "keyboard"
         case .permissions: return "lock.shield"
         }
@@ -196,6 +199,9 @@ struct SettingsView: View {
                 .environmentObject(manager)
         case .vocabulary:
             VocabularySettingsContent()
+                .environmentObject(manager)
+        case .voiceprint:
+            VoiceprintSettingsContent()
                 .environmentObject(manager)
         case .hotkey:
             HotkeySettingsContent()

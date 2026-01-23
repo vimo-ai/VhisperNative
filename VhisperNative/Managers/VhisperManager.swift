@@ -253,6 +253,14 @@ class VhisperManager: ObservableObject {
 
         case .cancelled:
             forceCleanup()
+
+        case .voiceprintVerified:
+            // Voiceprint matched, audio will be transcribed
+            print("[Voiceprint] Verified - audio accepted")
+
+        case .voiceprintRejected:
+            // Voiceprint not matched, audio discarded
+            print("[Voiceprint] Rejected - audio discarded")
         }
     }
 

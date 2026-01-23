@@ -62,6 +62,7 @@
 "settings.tab.output" = "输出";
 "settings.tab.hotkey" = "快捷键";
 "settings.tab.permissions" = "权限";
+"settings.tab.voiceprint" = "声纹";
 "settings.tab.about" = "关于";
 
 // 通用设置
@@ -159,6 +160,31 @@
 "state.idle" = "就绪";
 "state.recording" = "录音中...";
 "state.processing" = "处理中...";
+
+// MARK: - 声纹设置
+"settings.voiceprint.title" = "声纹";
+"settings.voiceprint.enable" = "启用声纹过滤";
+"settings.voiceprint.enable.description" = "只转录匹配你声纹的音频，过滤掉其他说话人";
+"settings.voiceprint.registration" = "声纹注册";
+"settings.voiceprint.registration.footer" = "录制几秒钟你的声音来注册声纹。请像平时使用时一样自然地说话。";
+"settings.voiceprint.registered" = "声纹已注册";
+"settings.voiceprint.not_registered" = "未注册声纹";
+"settings.voiceprint.register" = "注册声纹";
+"settings.voiceprint.re_register" = "重新注册";
+"settings.voiceprint.clear" = "清除";
+"settings.voiceprint.recording" = "录音中...";
+"settings.voiceprint.stop" = "停止";
+"settings.voiceprint.speak_now" = "请开始说话...";
+"settings.voiceprint.too_short" = "录音时间太短，请至少录制 %.0f 秒。";
+"settings.voiceprint.registered_success" = "声纹注册成功！";
+"settings.voiceprint.cleared" = "声纹已清除。";
+"settings.voiceprint.initializing" = "正在初始化声纹引擎...";
+"settings.voiceprint.sensitivity" = "验证灵敏度";
+"settings.voiceprint.sensitivity.footer" = "值越高验证越严格，有背景噪音时可能拒绝你的声音。值越低越宽松，但可能接受其他人的声音。";
+"settings.voiceprint.threshold" = "阈值";
+"settings.voiceprint.threshold.loose" = "宽松";
+"settings.voiceprint.threshold.normal" = "正常";
+"settings.voiceprint.threshold.strict" = "严格";
 
 // MARK: - 通用
 "general.cancel" = "取消";

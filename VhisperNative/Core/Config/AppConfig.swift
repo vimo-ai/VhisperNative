@@ -17,6 +17,7 @@ struct AppConfig: Codable {
     var llm: LLMConfig
     var output: OutputConfig
     var vocabulary: VocabularyConfig
+    var voiceprint: VoiceprintConfig
 
     static var `default`: AppConfig {
         AppConfig(
@@ -25,11 +26,12 @@ struct AppConfig: Codable {
             asr: .default,
             llm: .default,
             output: .default,
-            vocabulary: .default
+            vocabulary: .default,
+            voiceprint: .default
         )
     }
 
-    // Custom decoder to handle missing general field in old configs
+    // Custom decoder to handle missing fields in old configs
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         general = try container.decodeIfPresent(GeneralConfig.self, forKey: .general) ?? .default
@@ -38,15 +40,17 @@ struct AppConfig: Codable {
         llm = try container.decode(LLMConfig.self, forKey: .llm)
         output = try container.decode(OutputConfig.self, forKey: .output)
         vocabulary = try container.decodeIfPresent(VocabularyConfig.self, forKey: .vocabulary) ?? .default
+        voiceprint = try container.decodeIfPresent(VoiceprintConfig.self, forKey: .voiceprint) ?? .default
     }
 
-    init(general: GeneralConfig, hotkey: HotkeyConfig, asr: ASRConfig, llm: LLMConfig, output: OutputConfig, vocabulary: VocabularyConfig) {
+    init(general: GeneralConfig, hotkey: HotkeyConfig, asr: ASRConfig, llm: LLMConfig, output: OutputConfig, vocabulary: VocabularyConfig, voiceprint: VoiceprintConfig = .default) {
         self.general = general
         self.hotkey = hotkey
         self.asr = asr
         self.llm = llm
         self.output = output
         self.vocabulary = vocabulary
+        self.voiceprint = voiceprint
     }
 }
 
@@ -368,4 +372,25 @@ struct VocabularyConfig: Codable {
 
         return "Important vocabulary corrections:\n" + lines.joined(separator: "\n")
     }
+}
+
+// MARK: - Voiceprint Configuration
+
+struct VoiceprintConfig: Codable {
+    var enabled: Bool              // Enable voiceprint filtering
+    var threshold: Float           // Similarity threshold (0.0-1.0, higher = stricter)
+
+    static var `default`: VoiceprintConfig {
+        VoiceprintConfig(
+            enabled: false,
+            threshold: 0.5
+        )
+    }
+
+    /// Predefined threshold presets
+    static let thresholdPresets: [(name: String, localizationKey: String, value: Float)] = [
+        ("Loose", "settings.voiceprint.threshold.loose", 0.3),
+        ("Normal", "settings.voiceprint.threshold.normal", 0.5),
+        ("Strict", "settings.voiceprint.threshold.strict", 0.7)
+    ]
 }
