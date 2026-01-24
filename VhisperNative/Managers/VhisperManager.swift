@@ -251,10 +251,9 @@ class VhisperManager: ObservableObject {
                 finalText = finalText.trimmingCharacters(in: .whitespaces)
             }
 
-            lastResult = finalText
-
             // Output text or show warning for empty result
             if !finalText.isEmpty {
+                lastResult = finalText
                 errorMessage = nil
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     TextOutputService.shared.outputText(
@@ -263,10 +262,11 @@ class VhisperManager: ObservableObject {
                         pasteDelay: self.config.output.pasteDelayMs
                     )
                 }
-            } else {
-                // Show user-friendly message for empty transcription
+            } else if lastResult.isEmpty {
+                // Only show error if we never got any result in this session
                 errorMessage = NSLocalizedString("error.empty_transcription", comment: "Recording too short or no speech detected")
             }
+            // If finalText is empty but lastResult has content, it's just a cleanup final after silence timeout
 
             // Clear waveform text
             WaveformOverlayController.shared.clearText()

@@ -345,19 +345,13 @@ private actor StreamingState {
     func commit() {
         silenceTimer?.cancel()
 
-        // Emit final if we have text, or if we never committed anything (to trigger state cleanup)
-        let hasNewText = hasSpeech && !lastText.isEmpty
-        let alreadyCommittedViaSilenceTimeout = !lastCommittedText.isEmpty
-
-        if hasNewText {
-            print("[AppleSpeech] Commit with text: \(lastText)")
-            eventContinuation.yield(.final(text: lastText))
-        } else if !alreadyCommittedViaSilenceTimeout {
-            // No text and nothing was committed - emit empty final for state cleanup
-            eventContinuation.yield(.final(text: ""))
+        // Always emit final to ensure state machine proceeds
+        // If we have new text, emit it; otherwise emit empty string for cleanup
+        let textToEmit = (hasSpeech && !lastText.isEmpty) ? lastText : ""
+        if !textToEmit.isEmpty {
+            print("[AppleSpeech] Commit with text: \(textToEmit)")
         }
-        // If alreadyCommittedViaSilenceTimeout and no new text, skip emitting
-        // The silence timeout already emitted the final
+        eventContinuation.yield(.final(text: textToEmit))
 
         // Clean up
         recognitionTask?.cancel()
