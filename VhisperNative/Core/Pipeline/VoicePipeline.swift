@@ -122,7 +122,6 @@ actor VoicePipeline {
 
                     if !filteredSamples.isEmpty {
                         let pcmData = AudioEncoder.encodeToPCM(filteredSamples)
-                        print("[Pipeline] Sending \(filteredSamples.count) samples (\(String(format: "%.2f", Double(filteredSamples.count) / 16000.0))s) to ASR")
                         await control(.audio(pcmData))
                     }
                 }
@@ -145,28 +144,17 @@ actor VoicePipeline {
     }
 
     func stopRecording() async throws {
-        print("[Pipeline] stopRecording called, currentState=\(currentState)")
-        guard currentState == .recording else {
-            print("[Pipeline] stopRecording: not recording, returning")
-            return
-        }
+        guard currentState == .recording else { return }
 
         currentState = .processing
         onEvent?(.recordingStopped)
 
         // Stop audio recorder
-        print("[Pipeline] Stopping audio recorder...")
         let samples = await audioRecorder.stop()
-        print("[Pipeline] Audio recorder stopped, got \(samples.count) samples")
 
         // Check audio quality (only warn, don't block - audio was already streamed)
         switch AudioEncoder.checkAudioQuality(samples) {
-        case .error(let msg):
-            // For streaming ASR, audio was already sent during recording
-            // Only show warning, don't return - we still need to send commit
-            print("[Pipeline] Audio quality check: \(msg) (but continuing for streaming ASR)")
-            onEvent?(.warning(msg))
-        case .warning(let msg):
+        case .error(let msg), .warning(let msg):
             onEvent?(.warning(msg))
         case .ok:
             break
@@ -174,13 +162,9 @@ actor VoicePipeline {
 
         // Send remaining audio and commit
         if !samples.isEmpty {
-            print("[Pipeline] stopRecording: Sending remaining \(samples.count) samples (\(String(format: "%.2f", Double(samples.count) / 16000.0))s)")
             let pcmData = AudioEncoder.encodeToPCM(samples)
             await streamingControl?(.audio(pcmData))
-        } else {
-            print("[Pipeline] stopRecording: No remaining samples (audio was streamed during recording)")
         }
-        print("[Pipeline] Sending commit to ASR")
         await streamingControl?(.commit)
 
         // Cancel streaming task

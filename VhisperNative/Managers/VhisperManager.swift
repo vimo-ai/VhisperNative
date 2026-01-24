@@ -140,11 +140,7 @@ class VhisperManager: ObservableObject {
     }
 
     func stopRecording() {
-        print("[Vhisper] stopRecording called, state=\(state)")
-        guard state == .recording else {
-            print("[Vhisper] stopRecording: state is not recording, returning")
-            return
-        }
+        guard state == .recording else { return }
 
         state = .processing
         updateAppDelegateIcon(recording: false)
@@ -166,7 +162,6 @@ class VhisperManager: ObservableObject {
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             guard !Task.isCancelled else { return }
             if self.state == .processing {
-                print("[Vhisper] Processing timeout, forcing cleanup")
                 self.forceCleanup()
             }
         }

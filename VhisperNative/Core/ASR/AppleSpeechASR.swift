@@ -88,11 +88,9 @@ final class AppleSpeechASR: StreamingASRService, @unchecked Sendable {
                 await state.appendAudio(pcmData)
 
             case .commit:
-                print("[AppleSpeech] Commit received, finalizing...")
                 await state.commit()
 
             case .cancel:
-                print("[AppleSpeech] Cancel received")
                 await state.cancel()
             }
         }
@@ -195,14 +193,11 @@ private actor StreamingState {
         }
 
         self.recognitionTask = task
-        print("[AppleSpeech] New session started")
     }
 
     private func handleRecognitionResult(result: SFSpeechRecognitionResult?, error: Error?) {
         if let error = error {
             let nsError = error as NSError
-            print("[AppleSpeech] Error: domain=\(nsError.domain) code=\(nsError.code)")
-
             // Ignore certain errors
             if nsError.domain == "kAFAssistantErrorDomain" {
                 if nsError.code == 216 || nsError.code == 1110 {
@@ -222,7 +217,6 @@ private actor StreamingState {
             let finalText = text.isEmpty ? lastText : text
             let alreadyCommitted = !lastCommittedText.isEmpty && finalText == lastCommittedText
             if !finalText.isEmpty && hasSpeech && !alreadyCommitted {
-                print("[AppleSpeech] Final result (Apple VAD): \(finalText)")
                 eventContinuation.yield(.final(text: finalText))
             }
             // Reset state
@@ -262,7 +256,6 @@ private actor StreamingState {
             // Restart silence timer only when we get NEW text
             restartSilenceTimer()
 
-            print("[AppleSpeech] Partial: \(text)")
             eventContinuation.yield(.partial(text: text, stash: ""))
         }
     }
@@ -278,8 +271,6 @@ private actor StreamingState {
 
     private func onSilenceTimeout() {
         guard hasSpeech, !lastText.isEmpty else { return }
-
-        print("[AppleSpeech] Auto-commit: \(lastText)")
 
         // Emit final result
         eventContinuation.yield(.final(text: lastText))
@@ -346,11 +337,7 @@ private actor StreamingState {
         silenceTimer?.cancel()
 
         // Always emit final to ensure state machine proceeds
-        // If we have new text, emit it; otherwise emit empty string for cleanup
         let textToEmit = (hasSpeech && !lastText.isEmpty) ? lastText : ""
-        if !textToEmit.isEmpty {
-            print("[AppleSpeech] Commit with text: \(textToEmit)")
-        }
         eventContinuation.yield(.final(text: textToEmit))
 
         // Clean up
