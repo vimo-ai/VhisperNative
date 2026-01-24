@@ -17,6 +17,7 @@
 		3CB11F5569D792289F478882 /* VoicePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9904D567926CCDF18CB18C2 /* VoicePipeline.swift */; };
 		3D4A16301059C9DA8CD8C3A3 /* VocabularyProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03D3CB774EA0B56789FF4C52 /* VocabularyProcessor.swift */; };
 		3E42CD20BF35003E53E40F5E /* FunASR.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9410116987ED587331CAF24 /* FunASR.swift */; };
+		4574A4F238365E5EBF65D1D4 /* AppleSpeechASR.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5458A297737F9EE16C12D496 /* AppleSpeechASR.swift */; };
 		4ABD6D5B898CDE7FF00452B0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3F96FBDD171BAEAC060E31C7 /* Assets.xcassets */; };
 		4F4A7CC01FE432B80900E229 /* LLMSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8261347C6BCAD6B22A95AFF /* LLMSettingsView.swift */; };
 		539E956E566661B167FDCB9E /* VoiceprintManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 334DE38F58E14F1A361D388E /* VoiceprintManager.swift */; };
@@ -64,6 +65,7 @@
 		48E5F1FE846510DCD633F744 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		4F5EDA9BA660D27D25CCFA64 /* QwenRealtimeASR.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QwenRealtimeASR.swift; sourceTree = "<group>"; };
 		537B6D0FE12204F7D74217AD /* VhisperNative.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VhisperNative.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5458A297737F9EE16C12D496 /* AppleSpeechASR.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechASR.swift; sourceTree = "<group>"; };
 		56FEC3B616CB07935DA7AAE4 /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
 		6B966E3D973165BC13AA872F /* VhisperManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VhisperManager.swift; sourceTree = "<group>"; };
 		6F911C5B70A1661BE8679C0C /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
@@ -168,6 +170,7 @@
 		3E905C69854E6A2CF4BCA2C2 /* ASR */ = {
 			isa = PBXGroup;
 			children = (
+				5458A297737F9EE16C12D496 /* AppleSpeechASR.swift */,
 				AAA728BBC483F61114AAB5B1 /* ASRProtocol.swift */,
 				125B77427B3E7238E69038D0 /* DashScopeASR.swift */,
 				F9410116987ED587331CAF24 /* FunASR.swift */,
@@ -404,6 +407,7 @@
 				6239FAF7FC184D56822E236C /* ASRSettingsView.swift in Sources */,
 				B2D096DD2B5E8DD9973A4246 /* AppConfig.swift in Sources */,
 				21F398B497F9C38156539F8C /* AppDelegate.swift in Sources */,
+				4574A4F238365E5EBF65D1D4 /* AppleSpeechASR.swift in Sources */,
 				C026E55180D2F4D10DF40928 /* AudioLevelMonitor.swift in Sources */,
 				271F6D79AB9EF068485DEA45 /* AudioRecorder.swift in Sources */,
 				5D009AFD1A68588B154B15D8 /* ConfigStorage.swift in Sources */,

@@ -140,7 +140,11 @@ class VhisperManager: ObservableObject {
     }
 
     func stopRecording() {
-        guard state == .recording else { return }
+        print("[Vhisper] stopRecording called, state=\(state)")
+        guard state == .recording else {
+            print("[Vhisper] stopRecording: state is not recording, returning")
+            return
+        }
 
         state = .processing
         updateAppDelegateIcon(recording: false)
@@ -210,6 +214,10 @@ class VhisperManager: ObservableObject {
             streamingText = text + stash
 
         case .finalResult(let text):
+            // Cancel the processing timeout since we got a result
+            processingTimeoutTask?.cancel()
+            processingTimeoutTask = nil
+
             var finalText = text
 
             // Remove trailing punctuation if enabled

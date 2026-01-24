@@ -123,6 +123,7 @@ enum ASRProvider: String, Codable, CaseIterable, Identifiable {
     case dashscope = "DashScope"
     case openaiWhisper = "OpenAIWhisper"
     case funasr = "FunAsr"
+    case appleSpeech = "AppleSpeech"
 
     var id: String { rawValue }
 
@@ -132,6 +133,7 @@ enum ASRProvider: String, Codable, CaseIterable, Identifiable {
         case .dashscope: return "DashScope Paraformer"
         case .openaiWhisper: return "OpenAI Whisper"
         case .funasr: return "FunASR (Local)"
+        case .appleSpeech: return "Apple Speech (System)"
         }
     }
 }
@@ -143,6 +145,7 @@ struct ASRConfig: Codable {
     var dashscope: DashScopeASRConfig?
     var openai: OpenAIASRConfig?
     var funasr: FunASRConfig?
+    var appleSpeech: AppleSpeechASRConfig?
 
     static var `default`: ASRConfig {
         ASRConfig(
@@ -151,11 +154,12 @@ struct ASRConfig: Codable {
             qwen: QwenASRConfig(),
             dashscope: nil,
             openai: nil,
-            funasr: nil
+            funasr: nil,
+            appleSpeech: nil
         )
     }
 
-    // Custom decoder to handle missing vad field in old configs
+    // Custom decoder to handle missing fields in old configs
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         provider = try container.decode(ASRProvider.self, forKey: .provider)
@@ -164,15 +168,17 @@ struct ASRConfig: Codable {
         dashscope = try container.decodeIfPresent(DashScopeASRConfig.self, forKey: .dashscope)
         openai = try container.decodeIfPresent(OpenAIASRConfig.self, forKey: .openai)
         funasr = try container.decodeIfPresent(FunASRConfig.self, forKey: .funasr)
+        appleSpeech = try container.decodeIfPresent(AppleSpeechASRConfig.self, forKey: .appleSpeech)
     }
 
-    init(provider: ASRProvider, vad: VADConfig, qwen: QwenASRConfig?, dashscope: DashScopeASRConfig?, openai: OpenAIASRConfig?, funasr: FunASRConfig?) {
+    init(provider: ASRProvider, vad: VADConfig, qwen: QwenASRConfig?, dashscope: DashScopeASRConfig?, openai: OpenAIASRConfig?, funasr: FunASRConfig?, appleSpeech: AppleSpeechASRConfig? = nil) {
         self.provider = provider
         self.vad = vad
         self.qwen = qwen
         self.dashscope = dashscope
         self.openai = openai
         self.funasr = funasr
+        self.appleSpeech = appleSpeech
     }
 }
 
@@ -224,6 +230,20 @@ struct OpenAIASRConfig: Codable {
 
 struct FunASRConfig: Codable {
     var endpoint: String = "ws://localhost:10096"
+}
+
+struct AppleSpeechASRConfig: Codable {
+    var language: String = "zh-CN"
+    var useOnDevice: Bool = true
+
+    static let availableLanguages = [
+        ("zh-CN", "中文（简体）"),
+        ("zh-TW", "中文（繁體）"),
+        ("en-US", "English (US)"),
+        ("en-GB", "English (UK)"),
+        ("ja-JP", "日本語"),
+        ("ko-KR", "한국어")
+    ]
 }
 
 // MARK: - LLM Configuration

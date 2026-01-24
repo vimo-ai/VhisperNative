@@ -109,6 +109,9 @@
 "settings.asr.testing" = "Testing...";
 "settings.asr.test.success" = "Connection successful";
 "settings.asr.test.failed" = "Connection failed";
+"settings.asr.ondevice" = "On-Device Recognition";
+"settings.asr.ondevice.hint" = "Run locally on device, no network needed. Requires downloading language pack in System Settings.";
+"settings.asr.applespeech.info" = "Uses macOS system native speech recognition. Free, no API Key required, supports offline.";
 
 // MARK: - VAD Settings
 "settings.vad.title" = "VAD Voice Activity Detection";

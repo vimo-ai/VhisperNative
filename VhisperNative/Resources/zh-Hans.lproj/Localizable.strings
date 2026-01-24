@@ -109,6 +109,9 @@
 "settings.asr.testing" = "测试中...";
 "settings.asr.test.success" = "连接成功";
 "settings.asr.test.failed" = "连接失败";
+"settings.asr.ondevice" = "离线识别";
+"settings.asr.ondevice.hint" = "在设备上本地运行，无需网络。需要在系统设置中下载对应语言包。";
+"settings.asr.applespeech.info" = "使用 macOS 系统原生语音识别。免费、无需 API Key、支持离线。";
 
 // MARK: - VAD 设置
 "settings.vad.title" = "VAD 语音活动检测";

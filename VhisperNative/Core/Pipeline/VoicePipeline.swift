@@ -145,20 +145,27 @@ actor VoicePipeline {
     }
 
     func stopRecording() async throws {
-        guard currentState == .recording else { return }
+        print("[Pipeline] stopRecording called, currentState=\(currentState)")
+        guard currentState == .recording else {
+            print("[Pipeline] stopRecording: not recording, returning")
+            return
+        }
 
         currentState = .processing
         onEvent?(.recordingStopped)
 
         // Stop audio recorder
+        print("[Pipeline] Stopping audio recorder...")
         let samples = await audioRecorder.stop()
+        print("[Pipeline] Audio recorder stopped, got \(samples.count) samples")
 
-        // Check audio quality
+        // Check audio quality (only warn, don't block - audio was already streamed)
         switch AudioEncoder.checkAudioQuality(samples) {
         case .error(let msg):
-            currentState = .idle
-            onEvent?(.error(msg))
-            return
+            // For streaming ASR, audio was already sent during recording
+            // Only show warning, don't return - we still need to send commit
+            print("[Pipeline] Audio quality check: \(msg) (but continuing for streaming ASR)")
+            onEvent?(.warning(msg))
         case .warning(let msg):
             onEvent?(.warning(msg))
         case .ok:
@@ -171,7 +178,7 @@ actor VoicePipeline {
             let pcmData = AudioEncoder.encodeToPCM(samples)
             await streamingControl?(.audio(pcmData))
         } else {
-            print("[Pipeline] stopRecording: No remaining samples")
+            print("[Pipeline] stopRecording: No remaining samples (audio was streamed during recording)")
         }
         print("[Pipeline] Sending commit to ASR")
         await streamingControl?(.commit)

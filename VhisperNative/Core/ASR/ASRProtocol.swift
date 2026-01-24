@@ -93,6 +93,10 @@ enum ASRFactory {
         case .funasr:
             let funConfig = config.funasr ?? FunASRConfig()
             return FunASR(endpoint: funConfig.endpoint)
+
+        case .appleSpeech:
+            let appleConfig = config.appleSpeech ?? AppleSpeechASRConfig()
+            return AppleSpeechASR(language: appleConfig.language, useOnDevice: appleConfig.useOnDevice)
         }
     }
 

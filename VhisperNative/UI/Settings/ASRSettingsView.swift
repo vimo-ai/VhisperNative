@@ -31,6 +31,8 @@ struct ASRSettingsView: View {
                     openaiSettings
                 case .funasr:
                     funasrSettings
+                case .appleSpeech:
+                    appleSpeechSettings
                 }
 
                 HStack {
@@ -162,6 +164,37 @@ struct ASRSettingsView: View {
             .foregroundColor(.secondary)
     }
 
+    @ViewBuilder
+    private var appleSpeechSettings: some View {
+        Picker("Language", selection: Binding(
+            get: { manager.config.asr.appleSpeech?.language ?? "zh-CN" },
+            set: {
+                if manager.config.asr.appleSpeech == nil {
+                    manager.config.asr.appleSpeech = AppleSpeechASRConfig()
+                }
+                manager.config.asr.appleSpeech?.language = $0
+            }
+        )) {
+            ForEach(AppleSpeechASRConfig.availableLanguages, id: \.0) { code, name in
+                Text(name).tag(code)
+            }
+        }
+
+        Toggle("On-Device Recognition", isOn: Binding(
+            get: { manager.config.asr.appleSpeech?.useOnDevice ?? true },
+            set: {
+                if manager.config.asr.appleSpeech == nil {
+                    manager.config.asr.appleSpeech = AppleSpeechASRConfig()
+                }
+                manager.config.asr.appleSpeech?.useOnDevice = $0
+            }
+        ))
+
+        Text("Uses macOS system speech recognition. Free, no API key required, supports offline.")
+            .font(.caption)
+            .foregroundColor(.secondary)
+    }
+
     // MARK: - Validation
 
     private var isConfigValid: Bool {
@@ -174,6 +207,8 @@ struct ASRSettingsView: View {
             return !(manager.config.asr.openai?.apiKey.isEmpty ?? true)
         case .funasr:
             return true
+        case .appleSpeech:
+            return true  // No API key required
         }
     }
 

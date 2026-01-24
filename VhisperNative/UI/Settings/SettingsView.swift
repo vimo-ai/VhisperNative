@@ -313,6 +313,8 @@ struct ASRSettingsContent: View {
             openaiSettings
         case .funasr:
             funasrSettings
+        case .appleSpeech:
+            appleSpeechSettings
         }
     }
 
@@ -442,6 +444,52 @@ struct ASRSettingsContent: View {
         }
     }
 
+    @ViewBuilder
+    private var appleSpeechSettings: some View {
+        SettingsRow(label: "settings.asr.language".localized()) {
+            Picker("", selection: Binding(
+                get: { manager.config.asr.appleSpeech?.language ?? "zh-CN" },
+                set: {
+                    if manager.config.asr.appleSpeech == nil {
+                        manager.config.asr.appleSpeech = AppleSpeechASRConfig()
+                    }
+                    manager.config.asr.appleSpeech?.language = $0
+                }
+            )) {
+                ForEach(AppleSpeechASRConfig.availableLanguages, id: \.0) { code, name in
+                    Text(name).tag(code)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 200)
+        }
+
+        SettingsRow(label: "settings.asr.ondevice".localized(), hint: "settings.asr.ondevice.hint".localized()) {
+            Toggle("", isOn: Binding(
+                get: { manager.config.asr.appleSpeech?.useOnDevice ?? true },
+                set: {
+                    if manager.config.asr.appleSpeech == nil {
+                        manager.config.asr.appleSpeech = AppleSpeechASRConfig()
+                    }
+                    manager.config.asr.appleSpeech?.useOnDevice = $0
+                }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+        }
+
+        // Info about Apple Speech
+        HStack(spacing: 8) {
+            Image(systemName: "info.circle")
+                .foregroundColor(.blue)
+            Text("settings.asr.applespeech.info".localized())
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+        }
+        .padding(.top, 4)
+    }
+
     // MARK: - VAD Settings Section
 
     @ViewBuilder
@@ -515,6 +563,8 @@ struct ASRSettingsContent: View {
             return !(manager.config.asr.openai?.apiKey.isEmpty ?? true)
         case .funasr:
             return true
+        case .appleSpeech:
+            return true  // No API key required
         }
     }
 
