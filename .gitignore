@@ -41,3 +41,6 @@ Carthage/Build/
 # Node.js (for bumpp version tool)
 node_modules/
 pnpm-lock.yaml
+
+# Claude Code
+.claude/
