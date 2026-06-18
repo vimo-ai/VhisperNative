@@ -201,6 +201,14 @@
 "settings.voiceprint.threshold.normal" = "Normal";
 "settings.voiceprint.threshold.strict" = "Strict";
 
+// MARK: - Usage Statistics
+"settings.usage.title" = "Usage Statistics";
+"settings.usage.today" = "Today";
+"settings.usage.yesterday" = "Yesterday";
+"settings.usage.times" = "times";
+"settings.usage.empty" = "No usage records yet";
+"settings.usage.clear" = "Clear Records";
+
 // MARK: - General
 "general.cancel" = "Cancel";
 "general.confirm" = "Confirm";

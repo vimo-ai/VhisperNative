@@ -201,6 +201,14 @@
 "settings.voiceprint.threshold.normal" = "正常";
 "settings.voiceprint.threshold.strict" = "严格";
 
+// MARK: - 使用统计
+"settings.usage.title" = "使用统计";
+"settings.usage.today" = "今天";
+"settings.usage.yesterday" = "昨天";
+"settings.usage.times" = "次";
+"settings.usage.empty" = "暂无使用记录";
+"settings.usage.clear" = "清除记录";
+
 // MARK: - 通用
 "general.cancel" = "取消";
 "general.confirm" = "确认";

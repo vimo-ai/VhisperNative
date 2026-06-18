@@ -1534,6 +1534,8 @@ struct VocabularyEntryRow: View {
 struct GeneralSettingsContent: View {
     @EnvironmentObject var manager: VhisperManager
     @ObservedObject private var localizationManager = LocalizationManager.shared
+    @ObservedObject private var usageTracker = UsageTracker.shared
+    @State private var showUsageDetail = false
 
     /// Binding to convert [String] to comma-separated string for editing
     private var fillerWordsBinding: Binding<String> {
@@ -1602,10 +1604,113 @@ struct GeneralSettingsContent: View {
                 }
             }
 
+            // Usage Statistics Section
+            usageStatisticsSection
+
             Spacer()
         }
         .onAppear {
             localizationManager.setLanguage(manager.config.general.language)
         }
+    }
+
+    // MARK: - Usage Statistics Section
+
+    @ViewBuilder
+    private var usageStatisticsSection: some View {
+        SettingsSection(title: "settings.usage.title".localized()) {
+            // Today's usage
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("settings.usage.today".localized())
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    if let today = usageTracker.todayUsage {
+                        Text(today.formattedDuration)
+                            .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                        Text("\(today.count) " + "settings.usage.times".localized())
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("0 秒")
+                            .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                    }
+                }
+
+                Spacer()
+
+                Button(action: { showUsageDetail.toggle() }) {
+                    Image(systemName: showUsageDetail ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Detail view (last 7 days)
+            if showUsageDetail {
+                Divider()
+
+                if usageTracker.dailyUsages.isEmpty {
+                    Text("settings.usage.empty".localized())
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                        .padding(.vertical, 8)
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(usageTracker.dailyUsages.prefix(7)) { usage in
+                            HStack {
+                                Text(formatDate(usage.date))
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 80, alignment: .leading)
+
+                                Text(usage.formattedDuration)
+                                    .font(.system(size: 11, design: .monospaced))
+
+                                Spacer()
+
+                                Text("\(usage.count) 次")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    // Clear button
+                    HStack {
+                        Spacer()
+                        Button("settings.usage.clear".localized()) {
+                            usageTracker.clearData()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .foregroundColor(.red)
+                    }
+                }
+            }
+        }
+    }
+
+    private func formatDate(_ dateString: String) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: dateString) else { return dateString }
+
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateFormat = "MM-dd"
+
+        // Check if today
+        if Calendar.current.isDateInToday(date) {
+            return "settings.usage.today".localized()
+        }
+        // Check if yesterday
+        if Calendar.current.isDateInYesterday(date) {
+            return "settings.usage.yesterday".localized()
+        }
+
+        return displayFormatter.string(from: date)
     }
 }

@@ -125,6 +125,9 @@ class VhisperManager: ObservableObject {
         AudioLevelMonitor.shared.startMonitoring()
         WaveformOverlayController.shared.show(with: AudioLevelMonitor.shared)
 
+        // Start usage tracking
+        UsageTracker.shared.startSession(provider: config.asr.provider.rawValue)
+
         Task {
             do {
                 try await pipeline?.startRecording()
@@ -135,6 +138,7 @@ class VhisperManager: ObservableObject {
                 errorMessage = "Failed to start recording: \(error.localizedDescription)"
                 WaveformOverlayController.shared.hide()
                 AudioLevelMonitor.shared.stopMonitoring()
+                UsageTracker.shared.cancelSession()
             }
         }
     }
@@ -213,6 +217,9 @@ class VhisperManager: ObservableObject {
             processingTimeoutTask?.cancel()
             processingTimeoutTask = nil
 
+            // End usage tracking session
+            UsageTracker.shared.endSession()
+
             var finalText = text
 
             // Remove trailing punctuation if enabled
@@ -286,8 +293,10 @@ class VhisperManager: ObservableObject {
             updateAppDelegateIcon(recording: false)
             WaveformOverlayController.shared.hide()
             AudioLevelMonitor.shared.stopMonitoring()
+            UsageTracker.shared.cancelSession()
 
         case .cancelled:
+            UsageTracker.shared.cancelSession()
             forceCleanup()
 
         case .voiceprintVerified:
